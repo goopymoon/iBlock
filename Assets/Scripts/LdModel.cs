@@ -28,6 +28,8 @@ public class LdModelBase : MonoBehaviour
     protected const string TAG_LDR_FILE_EXT = ".ldr";
     protected const string TAG_DAT_FILE_EXT = ".dat";
 
+    protected const int VERTEX_CNT_LIMIT_PER_MESH = 60000;
+
     protected readonly string[] PARTS_REL_PATH =
     {
         Path.Combine(Path.Combine("..", "LdParts"), "p"),
@@ -212,7 +214,7 @@ public class LdModel : LdModelBase
         return true;
     }
 
-    private bool ParseSubFileInfo(string line, Matrix4x4 trMatrix, 
+    private bool ParseSubFileInfo(string line, Transform parent, Matrix4x4 trMatrix, 
         ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
         int parentColor, bool accInvertNext)
     {
@@ -236,7 +238,7 @@ public class LdModel : LdModelBase
         }
 
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return LoadModel(fname, mAcc, ref vertices, ref triangles, ref colors, color, accInvertNext);
+        return LoadModel(fname, parent, mAcc, ref vertices, ref triangles, ref colors, color, accInvertNext);
     }
 
     private bool ParseTriInfo(string line, Matrix4x4 trMatrix, 
@@ -334,7 +336,7 @@ public class LdModel : LdModelBase
         return true;
     }
 
-    private bool ParseModel(string[] readText, Matrix4x4 trMatrix, 
+    private bool ParseModel(string[] readText, Transform parent, Matrix4x4 trMatrix, 
         ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
         int parentColor, bool accumInvert)
     {
@@ -363,7 +365,7 @@ public class LdModel : LdModelBase
                     break;
                 case 1:
                     bool passInvertNext = invertNext ? !accumInvert : accumInvert;
-                    if (!ParseSubFileInfo(line, trMatrix, ref vertices, ref triangles, ref colors, parentColor, passInvertNext))
+                    if (!ParseSubFileInfo(line, parent, trMatrix, ref vertices, ref triangles, ref colors, parentColor, passInvertNext))
                     {
                         Console.WriteLine("ParseSubFileInfo failed: {0}", line);
                         return false;
@@ -392,10 +394,44 @@ public class LdModel : LdModelBase
         return true;
     }
 
-    private bool LoadModel(string fileName, Matrix4x4 trMatrix, 
+    private bool LoadCachedModel(string fileName, Transform parent, Matrix4x4 trMatrix, int parentColor, bool accInvertNext)
+    {
+        GameObject go = (GameObject)Instantiate(brickPrefab);
+        go.GetComponent<LdModelMesh>().SetParent(parent);
+
+        List<Vector3> vertices = new List<Vector3>();
+        List<int> triangles = new List<int>();
+        List<Color32> colors = new List<Color32>();
+
+        if (!_mpdModel.ContainsKey(fileName))
+        {
+            Console.WriteLine("mpd file does not contains: {0}", fileName);
+            return false;
+        }
+
+        if (!ParseModel(_mpdModel[fileName].ToArray(), go.transform, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext))
+            return false;
+
+        go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
+
+        return true;
+    }
+
+    private bool LoadModel(string fileName, Transform parent, Matrix4x4 trMatrix, 
         ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
         int parentColor, bool accInvertNext)
     {
+        if (vertices.Count > VERTEX_CNT_LIMIT_PER_MESH)
+        {
+            GameObject go = (GameObject)Instantiate(brickPrefab);
+            go.GetComponent<LdModelMesh>().SetParent(parent);
+            go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
+
+            vertices.Clear();
+            triangles.Clear();
+            colors.Clear();
+        }
+
         foreach (string element in PARTS_REL_PATH)
         {
             var path = Path.Combine(Application.dataPath, element);
@@ -404,60 +440,45 @@ public class LdModel : LdModelBase
             if (File.Exists(filePath))
             {
                 string[] readText = File.ReadAllLines(filePath);
-                return ParseModel(readText, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext);
+                return ParseModel(readText, parent, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext);
             }
         }
 
-        if (!_mpdModel.ContainsKey(fileName))
-        {
-            Console.WriteLine("mpd file does not contains: {0}", fileName);
-            return false;
-        }
-
-        return ParseModel(_mpdModel[fileName].ToArray(), trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext);
+        return LoadCachedModel(fileName, parent, trMatrix, parentColor, accInvertNext);
     }
 
-    private bool LoadMPD(string fileName, ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors)
-    {
-        var path = Path.Combine(Application.dataPath, MODEL_REL_PATH);
-        var filePath = Path.Combine(path, fileName);
-
-        if (!File.Exists(filePath))
-        {
-            Console.WriteLine("File does not exists: {0}", filePath);
-            return false;
-        }
-
-        string[] readText = File.ReadAllLines(filePath);
-        string mainModelName = SplitModel(readText);
-
-        if (mainModelName.Length == 0 || !_mpdModel.ContainsKey(mainModelName))
-        {
-            Console.WriteLine("Cannot find main model: {0}", mainModelName);
-            return false;
-        }
-
-        return ParseModel(_mpdModel[mainModelName].ToArray(), Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
-    }
-
-    private bool Load(string fileName, ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors)
+    private bool Load(string fileName, Transform parent, ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors)
     {
         _mpdModel.Clear();
 
         string ext = Path.GetExtension(fileName);
 
         if (ext.Equals(TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
-            return LoadMPD(fileName, ref vertices, ref triangles, ref colors);
+        {
+            var path = Path.Combine(Application.dataPath, MODEL_REL_PATH);
+            var filePath = Path.Combine(path, fileName);
+
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine("File does not exists: {0}", filePath);
+                return false;
+            }
+
+            string[] readText = File.ReadAllLines(filePath);
+            string mainModelName = SplitModel(readText);
+
+            if (mainModelName.Length == 0 || !_mpdModel.ContainsKey(mainModelName))
+            {
+                Console.WriteLine("Cannot find main model: {0}", mainModelName);
+                return false;
+            }
+
+            return ParseModel(_mpdModel[mainModelName].ToArray(), parent, Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
+        }
         else
-            return LoadModel(fileName, Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
-    }
-
-    private void CreateMesh(Transform parent, List<Vector3> vertices, List<int> triangles, List<Color32> colors)
-    {
-        GameObject go = (GameObject)Instantiate(brickPrefab);
-
-        go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
-        go.GetComponent<LdModelMesh>().SetParent(transform);
+        {
+            return LoadModel(fileName, parent, Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
+        }
     }
 
     // Use this for initialization
@@ -466,19 +487,22 @@ public class LdModel : LdModelBase
         _colorTable = GameObject.Find("Main Camera");
         _mpdModel = new Dictionary<string, List<string>>();
 
+        GameObject go = (GameObject)Instantiate(brickPrefab);
+        go.GetComponent<LdModelMesh>().SetParent(transform);
+
         List<Vector3> vertices = new List<Vector3>();
         List<int> triangles = new List<int>();
         List<Color32> colors = new List<Color32>();
 
         var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        if (!Load(fileName, ref vertices, ref triangles, ref colors))
+        if (!Load(fileName, go.transform, ref vertices, ref triangles, ref colors))
         {
             Console.WriteLine("Cannot parse: {0}", fileName);
             return;
         }
 
-        CreateMesh(transform, vertices, triangles, colors);
+        go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
     }
 
     // Update is called once per frame
