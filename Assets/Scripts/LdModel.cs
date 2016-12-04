@@ -412,6 +412,7 @@ public class LdModel : LdModelBase
         if (!ParseModel(_mpdModel[fileName].ToArray(), go.transform, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext))
             return false;
 
+        go.name = fileName;
         go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
 
         return true;
@@ -424,6 +425,7 @@ public class LdModel : LdModelBase
         if (vertices.Count > VERTEX_CNT_LIMIT_PER_MESH)
         {
             GameObject go = (GameObject)Instantiate(brickPrefab);
+            go.name = fileName;
             go.GetComponent<LdModelMesh>().SetParent(parent);
             go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
 
@@ -502,6 +504,7 @@ public class LdModel : LdModelBase
             return;
         }
 
+        go.name = fileName;
         go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
     }
 
