@@ -4,6 +4,29 @@ using System.Collections.Generic;
 
 using System;
 
+[Serializable]
+public class BrickMesh
+{
+    public List<Vector3> vertices { get; set; }
+    public List<int> triangles { get; set; }
+    public List<Color32> colors { get; set; }
+
+    public List<BrickMesh> children { get; set; }
+
+    public string name { get; set; }
+
+    public BrickMesh(string meshName)
+    {
+        name = meshName;
+
+        vertices = new List<Vector3>();
+        triangles = new List<int>();
+        colors = new List<Color32>();
+
+        children = new List<BrickMesh>();
+    }
+}
+
 public class LdModelMesh : MonoBehaviour {
 
     public void SetParent(Transform parent)
@@ -11,13 +34,13 @@ public class LdModelMesh : MonoBehaviour {
         transform.SetParent(parent, false);
     }
 
-    public void CreateMesh(List<Vector3> vertices, List<int> triangles, List<Color32> colors)
+    public void CreateMesh(BrickMesh brickMesh)
     {
         Mesh mesh = new Mesh();
 
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.colors32 = colors.ToArray();
+        mesh.vertices = brickMesh.vertices.ToArray();
+        mesh.triangles = brickMesh.triangles.ToArray();
+        mesh.colors32 = brickMesh.colors.ToArray();
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();

@@ -6,24 +6,24 @@ using System;
 
 public class LdColorTable : MonoBehaviour
 {
-    private LdColorLoader _colorLoader;
-    private Dictionary<int, Color32> _palette;
+    private LdColorLoader colorLoader;
+    private Dictionary<int, Color32> palette;
 
     public Color32 GetColor(int colorIndex)
     {
-        if (_palette.ContainsKey(colorIndex))
-            return _palette[colorIndex];
+        if (palette.ContainsKey(colorIndex))
+            return palette[colorIndex];
         else
-            return _colorLoader.DefBrickColor;
+            return colorLoader.DefBrickColor;
     }
 
     void Awake()
     {
-        _colorLoader = new LdColorLoader();
-        _palette = new Dictionary<int, Color32>();
+        colorLoader = new LdColorLoader();
+        palette = new Dictionary<int, Color32>();
 
-        string fileName = _colorLoader.COLOR_CFG_FNAME;
-        if (!_colorLoader.Load(fileName, ref _palette))
+        string fileName = colorLoader.COLOR_CFG_FNAME;
+        if (!colorLoader.Load(fileName, ref palette))
         {
             Console.WriteLine("Cannot parse: {0}", fileName);
         }

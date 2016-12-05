@@ -39,6 +39,8 @@ public class LdModelBase : MonoBehaviour
     protected readonly string MODEL_REL_PATH = 
         Path.Combine("..", "LdModels");
 
+    protected readonly string BRICK_REL_PATH = "Bricks";
+
     protected Vector3 ParseVector(string[] words, ref int offset)
     {
         float x = float.Parse(words[offset++]);
@@ -96,15 +98,15 @@ public class LdModel : LdModelBase
 {
     public GameObject brickPrefab;
 
-    private GameObject _colorTable;
-    private Dictionary<string, List<string>> _mpdModel;
-    private eCertified _certifed = eCertified.NA;
+    private GameObject colorTable;
+    private Dictionary<string, List<string>> mpdModel;
+    private eCertified certifed = eCertified.NA;
 
     private Color32 GetColor32(int localColor, int parentColor)
     {
         int colorIndex = (parentColor == LD_COLOR_MAIN) ? localColor : parentColor;
 
-        return _colorTable.GetComponent<LdColorTable>().GetColor(colorIndex);
+        return colorTable.GetComponent<LdColorTable>().GetColor(colorIndex);
     }
 
     private bool HasModelName(string line, ref string modelName)
@@ -140,11 +142,11 @@ public class LdModel : LdModelBase
             {
                 if (mainModelName.Length == 0)
                     mainModelName = modelName;
-                _mpdModel.Add(modelName, new List<string>());
+                mpdModel.Add(modelName, new List<string>());
             }
 
             if (modelName != null)
-                _mpdModel[modelName].Add(readText[i]);
+                mpdModel[modelName].Add(readText[i]);
         }
 
         return mainModelName;
@@ -165,25 +167,25 @@ public class LdModel : LdModelBase
         {
             offset++;
 
-            if (_certifed == eCertified.FALSE)
+            if (certifed == eCertified.FALSE)
                 return false;
 
-            if (_certifed == eCertified.NA)
-                _certifed = eCertified.TRUE;
+            if (certifed == eCertified.NA)
+                certifed = eCertified.TRUE;
 
         }
         else if(words[offset].Equals(TAG_NOCERTIFY, StringComparison.OrdinalIgnoreCase))
         {
             offset++;
 
-            if (_certifed == eCertified.TRUE)
+            if (certifed == eCertified.TRUE)
                 return false;
 
-            if (_certifed == eCertified.NA)
-                _certifed = eCertified.FALSE;
+            if (certifed == eCertified.NA)
+                certifed = eCertified.FALSE;
         }
 
-        if (_certifed == eCertified.FALSE)
+        if (certifed == eCertified.FALSE)
             return true;
 
         if (offset >= words.Length)
@@ -214,9 +216,8 @@ public class LdModel : LdModelBase
         return true;
     }
 
-    private bool ParseSubFileInfo(string line, Transform parent, Matrix4x4 trMatrix, 
-        ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
-        int parentColor, bool accInvertNext)
+    private bool ParseSubFileInfo(string line, Matrix4x4 trMatrix, 
+        ref BrickMesh brickMesh, int parentColor, bool accInvertNext)
     {
         string[] words = line.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 15)
@@ -238,12 +239,11 @@ public class LdModel : LdModelBase
         }
 
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return LoadModel(fname, parent, mAcc, ref vertices, ref triangles, ref colors, color, accInvertNext);
+        return LoadModel(fname, mAcc, ref brickMesh, color, accInvertNext);
     }
 
     private bool ParseTriInfo(string line, Matrix4x4 trMatrix, 
-        ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors,
-        int parentColor, eWinding winding)
+        ref BrickMesh brickMesh, int parentColor, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 11)
@@ -258,34 +258,33 @@ public class LdModel : LdModelBase
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
         // Unity is LHS
-        vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
-        vertices.Add(new Vector3(v2.x, -v2.y, v2.z));
-        vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
+        brickMesh.vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
+        brickMesh.vertices.Add(new Vector3(v2.x, -v2.y, v2.z));
+        brickMesh.vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
 
         // winding is for RHS so apply reverse for Unity
-        int lastIndex = triangles.Count;
+        int lastIndex = brickMesh.triangles.Count;
         if (winding == eWinding.CW)
         {
-            triangles.Add(lastIndex + 0);
-            triangles.Add(lastIndex + 1);
-            triangles.Add(lastIndex + 2);
+            brickMesh.triangles.Add(lastIndex + 0);
+            brickMesh.triangles.Add(lastIndex + 1);
+            brickMesh.triangles.Add(lastIndex + 2);
         }
         else
         {
-            triangles.Add(lastIndex + 0);
-            triangles.Add(lastIndex + 2);
-            triangles.Add(lastIndex + 1);
+            brickMesh.triangles.Add(lastIndex + 0);
+            brickMesh.triangles.Add(lastIndex + 2);
+            brickMesh.triangles.Add(lastIndex + 1);
         }
 
         for (int i = 0; i < 3; ++i)
-            colors.Add(vtColor);
+            brickMesh.colors.Add(vtColor);
 
         return true;
     }
 
     private bool ParseQuadInfo(string line, Matrix4x4 trMatrix, 
-        ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors,
-        int parentColor, eWinding winding)
+        ref BrickMesh brickMesh, int parentColor, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 14)
@@ -300,45 +299,44 @@ public class LdModel : LdModelBase
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v4 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
-        vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
-        vertices.Add(new Vector3(v2.x, -v2.y, v2.z));
-        vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
+        brickMesh.vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
+        brickMesh.vertices.Add(new Vector3(v2.x, -v2.y, v2.z));
+        brickMesh.vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
 
-        vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
-        vertices.Add(new Vector3(v4.x, -v4.y, v4.z));
-        vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
+        brickMesh.vertices.Add(new Vector3(v3.x, -v3.y, v3.z));
+        brickMesh.vertices.Add(new Vector3(v4.x, -v4.y, v4.z));
+        brickMesh.vertices.Add(new Vector3(v1.x, -v1.y, v1.z));
 
-        int lastIndex = triangles.Count;
+        int lastIndex = brickMesh.triangles.Count;
         if (winding == eWinding.CW)
         {
-            triangles.Add(lastIndex + 0);
-            triangles.Add(lastIndex + 1);
-            triangles.Add(lastIndex + 2);
+            brickMesh.triangles.Add(lastIndex + 0);
+            brickMesh.triangles.Add(lastIndex + 1);
+            brickMesh.triangles.Add(lastIndex + 2);
 
-            triangles.Add(lastIndex + 3);
-            triangles.Add(lastIndex + 4);
-            triangles.Add(lastIndex + 5);
+            brickMesh.triangles.Add(lastIndex + 3);
+            brickMesh.triangles.Add(lastIndex + 4);
+            brickMesh.triangles.Add(lastIndex + 5);
         }
         else
         {
-            triangles.Add(lastIndex + 0);
-            triangles.Add(lastIndex + 2);
-            triangles.Add(lastIndex + 1);
+            brickMesh.triangles.Add(lastIndex + 0);
+            brickMesh.triangles.Add(lastIndex + 2);
+            brickMesh.triangles.Add(lastIndex + 1);
 
-            triangles.Add(lastIndex + 3);
-            triangles.Add(lastIndex + 5);
-            triangles.Add(lastIndex + 4);
+            brickMesh.triangles.Add(lastIndex + 3);
+            brickMesh.triangles.Add(lastIndex + 5);
+            brickMesh.triangles.Add(lastIndex + 4);
         }
 
         for (int i = 0; i < 6; ++i)
-            colors.Add(vtColor);
+            brickMesh.colors.Add(vtColor);
 
         return true;
     }
 
-    private bool ParseModel(string[] readText, Transform parent, Matrix4x4 trMatrix, 
-        ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
-        int parentColor, bool accumInvert)
+    private bool ParseModel(string[] readText, Matrix4x4 trMatrix, 
+        ref BrickMesh brickMesh, int parentColor, bool accumInvert)
     {
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
@@ -365,7 +363,7 @@ public class LdModel : LdModelBase
                     break;
                 case 1:
                     bool passInvertNext = invertNext ? !accumInvert : accumInvert;
-                    if (!ParseSubFileInfo(line, parent, trMatrix, ref vertices, ref triangles, ref colors, parentColor, passInvertNext))
+                    if (!ParseSubFileInfo(line, trMatrix, ref brickMesh, parentColor, passInvertNext))
                     {
                         Console.WriteLine("ParseSubFileInfo failed: {0}", line);
                         return false;
@@ -373,14 +371,14 @@ public class LdModel : LdModelBase
                     invertNext = false;
                     break;
                 case 3:
-                    if (!ParseTriInfo(line, trMatrix, ref vertices, ref triangles, ref colors, parentColor, winding))
+                    if (!ParseTriInfo(line, trMatrix, ref brickMesh, parentColor, winding))
                     {
                         Console.WriteLine("ParseTriInfo failed: {0}", line);
                         return false;
                     }
                     break;
                 case 4:
-                    if (!ParseQuadInfo(line, trMatrix, ref vertices, ref triangles, ref colors, parentColor, winding))
+                    if (!ParseQuadInfo(line, trMatrix, ref brickMesh, parentColor, winding))
                     {
                         Console.WriteLine("ParseQuadInfo failed: {0}", line);
                         return false;
@@ -394,46 +392,9 @@ public class LdModel : LdModelBase
         return true;
     }
 
-    private bool LoadCachedModel(string fileName, Transform parent, Matrix4x4 trMatrix, int parentColor, bool accInvertNext)
+    private bool LoadModel(string fileName, Matrix4x4 trMatrix, 
+        ref BrickMesh brickMesh, int parentColor, bool accInvertNext)
     {
-        GameObject go = (GameObject)Instantiate(brickPrefab);
-        go.GetComponent<LdModelMesh>().SetParent(parent);
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
-        List<Color32> colors = new List<Color32>();
-
-        if (!_mpdModel.ContainsKey(fileName))
-        {
-            Console.WriteLine("mpd file does not contains: {0}", fileName);
-            return false;
-        }
-
-        if (!ParseModel(_mpdModel[fileName].ToArray(), go.transform, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext))
-            return false;
-
-        go.name = fileName;
-        go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
-
-        return true;
-    }
-
-    private bool LoadModel(string fileName, Transform parent, Matrix4x4 trMatrix, 
-        ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors, 
-        int parentColor, bool accInvertNext)
-    {
-        if (vertices.Count > VERTEX_CNT_LIMIT_PER_MESH)
-        {
-            GameObject go = (GameObject)Instantiate(brickPrefab);
-            go.name = fileName;
-            go.GetComponent<LdModelMesh>().SetParent(parent);
-            go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
-
-            vertices.Clear();
-            triangles.Clear();
-            colors.Clear();
-        }
-
         foreach (string element in PARTS_REL_PATH)
         {
             var path = Path.Combine(Application.dataPath, element);
@@ -442,16 +403,28 @@ public class LdModel : LdModelBase
             if (File.Exists(filePath))
             {
                 string[] readText = File.ReadAllLines(filePath);
-                return ParseModel(readText, parent, trMatrix, ref vertices, ref triangles, ref colors, parentColor, accInvertNext);
+                return ParseModel(readText, trMatrix, ref brickMesh, parentColor, accInvertNext);
             }
         }
 
-        return LoadCachedModel(fileName, parent, trMatrix, parentColor, accInvertNext);
+        if (!mpdModel.ContainsKey(fileName))
+        {
+            Console.WriteLine("mpd file does not contains: {0}", fileName);
+            return false;
+        }
+
+        BrickMesh subBrickMesh = new BrickMesh(fileName);
+
+        if (!ParseModel(mpdModel[fileName].ToArray(), trMatrix, ref subBrickMesh, parentColor, accInvertNext))
+            return false;
+
+        brickMesh.children.Add(subBrickMesh);
+        return true;
     }
 
-    private bool Load(string fileName, Transform parent, ref List<Vector3> vertices, ref List<int> triangles, ref List<Color32> colors)
+    private bool Load(string fileName, ref BrickMesh brickMesh)
     {
-        _mpdModel.Clear();
+        mpdModel.Clear();
 
         string ext = Path.GetExtension(fileName);
 
@@ -469,43 +442,55 @@ public class LdModel : LdModelBase
             string[] readText = File.ReadAllLines(filePath);
             string mainModelName = SplitModel(readText);
 
-            if (mainModelName.Length == 0 || !_mpdModel.ContainsKey(mainModelName))
+            if (mainModelName.Length == 0 || !mpdModel.ContainsKey(mainModelName))
             {
                 Console.WriteLine("Cannot find main model: {0}", mainModelName);
                 return false;
             }
 
-            return ParseModel(_mpdModel[mainModelName].ToArray(), parent, Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
+            return ParseModel(mpdModel[mainModelName].ToArray(), Matrix4x4.identity, ref brickMesh, LD_COLOR_MAIN, false);
         }
         else
         {
-            return LoadModel(fileName, parent, Matrix4x4.identity, ref vertices, ref triangles, ref colors, LD_COLOR_MAIN, false);
+            return LoadModel(fileName, Matrix4x4.identity, ref brickMesh, LD_COLOR_MAIN, false);
+        }
+    }
+
+    private void CreateMesh(Transform parent, BrickMesh brickMesh)
+    {
+        GameObject go = (GameObject)Instantiate(brickPrefab);
+
+        go.name = brickMesh.name;
+        go.GetComponent<LdModelMesh>().SetParent(parent);
+        go.GetComponent<LdModelMesh>().CreateMesh(brickMesh);
+
+        foreach (var child in brickMesh.children)
+        {
+            CreateMesh(go.transform, child);
         }
     }
 
     // Use this for initialization
     void Start ()
     {
-        _colorTable = GameObject.Find("Main Camera");
-        _mpdModel = new Dictionary<string, List<string>>();
-
-        GameObject go = (GameObject)Instantiate(brickPrefab);
-        go.GetComponent<LdModelMesh>().SetParent(transform);
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
-        List<Color32> colors = new List<Color32>();
+        colorTable = GameObject.Find("Main Camera");
+        mpdModel = new Dictionary<string, List<string>>();
 
         var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        if (!Load(fileName, go.transform, ref vertices, ref triangles, ref colors))
+
+        BrickMesh brickMesh = new BrickMesh(fileName);
+
+        if (!Load(fileName, ref brickMesh))
         {
             Console.WriteLine("Cannot parse: {0}", fileName);
             return;
         }
 
-        go.name = fileName;
-        go.GetComponent<LdModelMesh>().CreateMesh(vertices, triangles, colors);
+        //BrickBinarySerializer.ExportBrickMesh(BRICK_REL_PATH, brickMesh);
+        //BrickBinarySerializer.ImportBrickMesh(BRICK_REL_PATH, ref brickMesh);
+
+        CreateMesh(transform, brickMesh);
     }
 
     // Update is called once per frame
