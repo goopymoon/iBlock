@@ -8,13 +8,6 @@ using System.Text;
 
 public class LdColorLoader
 {
-    public const string TAG_COMMENT = "0";
-    public const string TAG_COLOR = "!COLOUR";
-    public const string TAG_CODE = "CODE";
-    public const string TAG_VALUE = "VALUE";
-    public const string TAG_EDGE = "EDGE";
-    public const string TAG_ALPHA = "ALPHA";
-
     public readonly string COLOR_REL_PATH = Path.Combine("..", "LdParts");
     public readonly string COLOR_CFG_FNAME = "LDConfig.ldr";
 
@@ -43,13 +36,13 @@ public class LdColorLoader
             decimal lineType;
             if (decimal.TryParse(words[0], out lineType) && lineType == 0)
             {
-                if (!words[1].Equals(TAG_COLOR, StringComparison.OrdinalIgnoreCase))
+                if (!words[1].Equals(LdConstant.TAG_COLOR, StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!words[3].Equals(TAG_CODE, StringComparison.OrdinalIgnoreCase))
+                if (!words[3].Equals(LdConstant.TAG_CODE, StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!words[5].Equals(TAG_VALUE, StringComparison.OrdinalIgnoreCase))
+                if (!words[5].Equals(LdConstant.TAG_VALUE, StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!words[7].Equals(TAG_EDGE, StringComparison.OrdinalIgnoreCase))
+                if (!words[7].Equals(LdConstant.TAG_EDGE, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 int code = Int32.Parse(words[4]);
@@ -82,7 +75,7 @@ public class LdColorLoader
                 color.a = 255;
                 if (words.Length == 11)
                 {
-                    if (!words[9].Equals(TAG_ALPHA, StringComparison.OrdinalIgnoreCase))
+                    if (!words[9].Equals(LdConstant.TAG_ALPHA, StringComparison.OrdinalIgnoreCase))
                         continue;
                     color.a = Convert.ToByte(words[10]);
                 }

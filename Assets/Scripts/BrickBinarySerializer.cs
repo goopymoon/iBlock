@@ -7,6 +7,8 @@ using System.Runtime.Serialization;
 
 public static class BrickBinarySerializer
 {
+    public const string BRICK_REL_PATH = "Bricks";
+
     public class Color32SerializationSurrogate : ISerializationSurrogate
     {
         // Method called to serialize a Vector3 object
@@ -61,9 +63,9 @@ public static class BrickBinarySerializer
         }
     }
 
-    public static void ExportBrickMesh(string relPath, BrickMesh brickMesh)
+    public static void ExportBrickMesh(BrickMesh brickMesh)
     {
-        var path = Path.Combine(Application.dataPath, relPath);
+        var path = Path.Combine(Application.dataPath, BRICK_REL_PATH);
         var filePath = Path.Combine(path, brickMesh.name);
 
         string directoryName = Path.GetDirectoryName(filePath);
@@ -87,9 +89,9 @@ public static class BrickBinarySerializer
         stream.Close();
     }
 
-    public static void ImportBrickMesh(string relPath, ref BrickMesh brickMesh)
+    public static void ImportBrickMesh(ref BrickMesh brickMesh)
     {
-        var path = Path.Combine(Application.dataPath, relPath);
+        var path = Path.Combine(Application.dataPath, BRICK_REL_PATH);
         var filePath = Path.Combine(path, brickMesh.name);
 
         FileStream stream = File.OpenRead(filePath);
