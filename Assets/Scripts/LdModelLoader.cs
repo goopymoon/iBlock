@@ -14,29 +14,34 @@ public class LdModelLoader
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding   { CCW = 0, CW };
 
-    protected readonly string[] PARTS_REL_PATH =
+    private readonly string[] PARTS_REL_PATH =
     {
         Path.Combine(Path.Combine("..", "LdParts"), "p"),
         Path.Combine(Path.Combine("..", "LdParts"), "parts"),
     };
-
-    protected readonly string MODEL_REL_PATH = Path.Combine("..", "LdModels");
+    private readonly string MODEL_REL_PATH = Path.Combine("..", "LdModels");
 
     private LdColorTable colorTable;
-    private Dictionary<string, List<string>> mpdModel;
+    private Dictionary<string, List<string>> ldrCache;
     private eCertified certifed = eCertified.NA;
 
     public LdModelLoader(LdColorTable palette)
     {
         colorTable = palette;
-        mpdModel = new Dictionary<string, List<string>>();
+        ldrCache = new Dictionary<string, List<string>>();
+    }
+
+    private void Reset()
+    {
+        ldrCache.Clear();
+        certifed = eCertified.NA;
     }
 
     private Color32 GetColor32(int localColor, int parentColor)
     {
         int colorIndex = (parentColor == LdConstant.LD_COLOR_MAIN) ? localColor : parentColor;
 
-        return colorTable.GetComponent<LdColorTable>().GetColor(colorIndex);
+        return colorTable.GetColor(colorIndex);
     }
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -346,7 +351,7 @@ public class LdModelLoader
             }
         }
 
-        if (!mpdModel.ContainsKey(fileName))
+        if (!ldrCache.ContainsKey(fileName))
         {
             Console.WriteLine("mpd file does not contains: {0}", fileName);
             return false;
@@ -354,7 +359,7 @@ public class LdModelLoader
 
         BrickMesh subBrickMesh = new BrickMesh(fileName);
 
-        if (!ParseModel(mpdModel[fileName].ToArray(), trMatrix, ref subBrickMesh, parentColor, accInvertNext))
+        if (!ParseModel(ldrCache[fileName].ToArray(), trMatrix, ref subBrickMesh, parentColor, accInvertNext))
             return false;
 
         brickMesh.children.Add(subBrickMesh);
@@ -394,11 +399,11 @@ public class LdModelLoader
             {
                 if (mainModelName.Length == 0)
                     mainModelName = modelName;
-                mpdModel.Add(modelName, new List<string>());
+                ldrCache.Add(modelName, new List<string>());
             }
 
             if (modelName != null)
-                mpdModel[modelName].Add(readText[i]);
+                ldrCache[modelName].Add(readText[i]);
         }
 
         return mainModelName;
@@ -406,7 +411,7 @@ public class LdModelLoader
 
     public bool Load(string fileName, ref BrickMesh brickMesh)
     {
-        mpdModel.Clear();
+        ldrCache.Clear();
 
         string ext = Path.GetExtension(fileName);
 
@@ -424,13 +429,13 @@ public class LdModelLoader
             string[] readText = File.ReadAllLines(filePath);
             string mainModelName = SplitModel(readText);
 
-            if (mainModelName.Length == 0 || !mpdModel.ContainsKey(mainModelName))
+            if (mainModelName.Length == 0 || !ldrCache.ContainsKey(mainModelName))
             {
                 Console.WriteLine("Cannot find main model: {0}", mainModelName);
                 return false;
             }
 
-            return ParseModel(mpdModel[mainModelName].ToArray(), Matrix4x4.identity, ref brickMesh, LdConstant.LD_COLOR_MAIN, false);
+            return ParseModel(ldrCache[mainModelName].ToArray(), Matrix4x4.identity, ref brickMesh, LdConstant.LD_COLOR_MAIN, false);
         }
         else
         {
