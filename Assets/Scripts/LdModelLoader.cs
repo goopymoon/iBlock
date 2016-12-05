@@ -411,7 +411,7 @@ public class LdModelLoader
 
     public bool Load(string fileName, ref BrickMesh brickMesh)
     {
-        ldrCache.Clear();
+        Reset();
 
         string ext = Path.GetExtension(fileName);
 
