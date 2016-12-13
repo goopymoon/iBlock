@@ -9,8 +9,6 @@ using System.Text.RegularExpressions;
 
 public class LdModelLoader
 {
-    private const int VERTEX_CNT_LIMIT_PER_MESH = 60000;
-
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding   { CCW = 0, CW };
 
@@ -21,6 +19,7 @@ public class LdModelLoader
     };
     private readonly string MODEL_REL_PATH = Path.Combine("..", "LdModels");
 
+    private bool disableStud = false;
     private LdColorTable colorTable;
     private Dictionary<string, List<string>> ldrCache;
     private Dictionary<string, BrickMesh> brickCache;
@@ -333,6 +332,12 @@ public class LdModelLoader
     private bool LoadModel(string fileName, ref BrickMesh brickMesh, 
         Matrix4x4 trMatrix, int parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
+        if (disableStud)
+        {
+            if (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1)
+                return true;
+        }
+
         if (brickCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
@@ -356,10 +361,6 @@ public class LdModelLoader
                     BrickMesh subBrickMesh = new BrickMesh(fileName);
                     if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity, parentColor, accInvertNext))
                     {
-                        if (subBrickMesh.vertices.Count > VERTEX_CNT_LIMIT_PER_MESH)
-                        {
-                            Debug.Log("Out of bound");
-                        }
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
                         subBrickMesh.localTr = trMatrix;
                         brickMesh.children.Add(subBrickMesh);
@@ -378,10 +379,6 @@ public class LdModelLoader
             BrickMesh subBrickMesh = new BrickMesh(fileName);
             if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity, parentColor, accInvertNext))
             {
-                if (subBrickMesh.vertices.Count > VERTEX_CNT_LIMIT_PER_MESH)
-                {
-                    Debug.Log("Out of bound");
-                }
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
                 subBrickMesh.localTr = trMatrix;
                 brickMesh.children.Add(subBrickMesh);
@@ -437,10 +434,11 @@ public class LdModelLoader
         return mainModelName;
     }
 
-    public bool Load(string fileName, ref BrickMesh brickMesh)
+    public bool Load(string fileName, ref BrickMesh brickMesh, bool disable=false)
     {
         string ext = Path.GetExtension(fileName);
 
+        disableStud = disable;
         certifed = eCertified.NA;
         Matrix4x4 transform = Matrix4x4.identity;
 
