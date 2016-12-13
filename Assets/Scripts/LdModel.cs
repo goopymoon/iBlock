@@ -12,8 +12,8 @@ public class LdModel : MonoBehaviour
         GameObject go = (GameObject)Instantiate(brickPrefab);
 
         go.name = brickMesh.name;
-        go.GetComponent<LdModelMesh>().SetParent(parent);
-        go.GetComponent<LdModelMesh>().CreateMesh(brickMesh);
+        go.GetComponent<Brick>().SetParent(parent);
+        go.GetComponent<Brick>().CreateMesh(brickMesh);
 
         foreach (var child in brickMesh.children)
         {
@@ -27,8 +27,9 @@ public class LdModel : MonoBehaviour
         GameObject colorTable = GameObject.Find("Main Camera");
         LdModelLoader modelLoader = new LdModelLoader(colorTable.GetComponent<LdColorTable>());
 
-        var fileName = @"Creator/4349 - Bird.mpd";
-        //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
+        //var fileName = @"Creator/4349 - Bird.mpd";
+        var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
+        //var fileName = @"3857.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))

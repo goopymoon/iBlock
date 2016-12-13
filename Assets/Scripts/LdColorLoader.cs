@@ -15,6 +15,8 @@ public class LdColorLoader
 
     public LdColorLoader()
     {
+        DefBrickColor = new Color32();
+
         DefBrickColor.r = 127;
         DefBrickColor.g = 127;
         DefBrickColor.b = 127;
@@ -68,7 +70,7 @@ public class LdColorLoader
                     }
                 }
 
-                Color32 color;
+                Color32 color = new Color32();
                 color.r = Convert.ToByte(Convert.ToInt32(RBuilder.ToString(), 16));
                 color.g = Convert.ToByte(Convert.ToInt32(GBuilder.ToString(), 16));
                 color.b = Convert.ToByte(Convert.ToInt32(BBuilder.ToString(), 16));
