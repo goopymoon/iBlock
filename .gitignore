@@ -1,7 +1,6 @@
 # Skip LDraw parts and model directory
 # =============== #
 LdParts
-LdModels
 Bricks
 
 #For Mac developers
