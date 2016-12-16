@@ -8,25 +8,29 @@ using System;
 public class BrickMesh
 {
     public string name { get; set; }
-    public int parentColor { get; set; }
-    public Matrix4x4 localTr { get; set; }
+
+    public byte brickColor { get; private set; }
+    public string brickInfo { get { return string.Format("{0}: {1}", brickColor.ToString(), name); } }
+
     public List<Vector3> vertices { get; set; }
     public List<int> triangles { get; set; }
-    public List<Color32> colors { get; set; }
+    public List<byte> colorIndices { get; set; }
     public List<BrickMesh> children { get; set; }
+
+    private Matrix4x4 localTr;
 
     public BrickMesh(string meshName)
     {
         name = meshName;
 
-        parentColor = LdConstant.LD_COLOR_MAIN;
+        brickColor = LdConstant.LD_COLOR_MAIN;
 
         localTr = new Matrix4x4();
         localTr = Matrix4x4.identity;
 
         vertices = new List<Vector3>();
         triangles = new List<int>();
-        colors = new List<Color32>();
+        colorIndices = new List<byte>();
         children = new List<BrickMesh>();
     }
 
@@ -34,23 +38,36 @@ public class BrickMesh
     {
         name = rhs.name;
 
-        parentColor = rhs.parentColor;
+        brickColor = rhs.brickColor;
 
         localTr = new Matrix4x4();
         localTr = rhs.localTr;
 
         vertices = new List<Vector3>(rhs.vertices);
         triangles = new List<int>(rhs.triangles);
-        colors = new List<Color32>(rhs.colors);
+        colorIndices = new List<byte>(rhs.colorIndices);
         children = new List<BrickMesh>(rhs.children);
     }
 
-    public void AdjustColor(LdColorTable colorTable)
+    public void AddChildBrick(byte colorIndex, Matrix4x4 trMatrix, BrickMesh child)
     {
-        if (parentColor != LdConstant.LD_COLOR_MAIN)
+        child.brickColor = colorIndex;
+        child.localTr = trMatrix;
+
+        children.Add(child);
+    }
+
+    public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
+    {
+        MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);
+    }
+
+    public void GetColors(LdColorTable colorTable, byte parentColor, ref List<Color32> colList)
+    {
+        for (int i = 0; i < colorIndices.Count; ++i)
         {
-            for (int i = 0; i < colors.Count; ++i)
-                colors[i] = colorTable.GetColor(parentColor);
+            byte colorIndex = (colorIndices[i] == LdConstant.LD_COLOR_MAIN) ? parentColor : colorIndices[i];
+            colList.Add(colorTable.GetColor(colorIndex));
         }
     }
 }
@@ -63,7 +80,7 @@ public class Brick : MonoBehaviour {
         Quaternion localRotation;
         Vector3 localScale;
 
-        MatrixUtil.DecomposeMatrix(brickMesh.localTr, out localPosition, out localRotation, out localScale);
+        brickMesh.GetMatrixComponents(out localPosition, out localRotation, out localScale);
 
         transform.localPosition = localPosition;
         transform.localRotation = localRotation;
@@ -75,16 +92,18 @@ public class Brick : MonoBehaviour {
         transform.SetParent(parent, false);
     }
 
-    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh)
+    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, byte parentBrickColor)
     {
         Mesh mesh = new Mesh();
+        List<Color32> colors = new List<Color32>();
 
         TransformModel(brickMesh);
-        brickMesh.AdjustColor(colorTable);
+        byte effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
+        brickMesh.GetColors(colorTable, effectiveParentColor, ref colors);
 
         mesh.vertices = brickMesh.vertices.ToArray();
         mesh.triangles = brickMesh.triangles.ToArray();
-        mesh.colors32 = brickMesh.colors.ToArray();
+        mesh.colors32 = colors.ToArray();
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();

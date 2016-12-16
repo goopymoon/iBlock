@@ -20,23 +20,15 @@ public class LdModelLoader
     private readonly string MODEL_REL_PATH = Path.Combine("..", "LdModels");
 
     private bool disableStud = false;
-    private LdColorTable colorTable;
     private Dictionary<string, List<string>> ldrCache;
     private Dictionary<string, BrickMesh> brickCache;
+
     private eCertified certifed = eCertified.NA;
 
-    public LdModelLoader(LdColorTable palette)
+    public LdModelLoader()
     {
-        colorTable = palette;
         ldrCache = new Dictionary<string, List<string>>();
         brickCache = new Dictionary<string, BrickMesh>();
-    }
-
-    private Color32 GetColor32(int localColor, int parentColor)
-    {
-        int colorIndex = (parentColor == LdConstant.LD_COLOR_MAIN) ? localColor : parentColor;
-
-        return colorTable.GetColor(colorIndex);
     }
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -156,7 +148,7 @@ public class LdModelLoader
     }
 
     private bool ParseSubFileInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, int parentColor, bool accumInvert)
+        Matrix4x4 trMatrix, byte parentColor, bool accumInvert)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 15)
@@ -164,8 +156,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        int localColor = Int32.Parse(words[offset++]);
-        int color = (parentColor == LdConstant.LD_COLOR_MAIN) ? localColor : parentColor;
+        byte localColor = (byte)Int32.Parse(words[offset++]);
+        byte colorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Matrix4x4 mLocal = ParseMatrix(words, ref offset);
         string fname = words[offset];
@@ -176,11 +168,11 @@ public class LdModelLoader
             accumInvert = !accumInvert;
 
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return LoadModel(fname, ref brickMesh, mAcc, color, accumInvert);
+        return LoadModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert);
     }
 
     private bool ParseTriInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, int parentColor, bool accumInvert, eWinding winding)
+        Matrix4x4 trMatrix, byte parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 11)
@@ -188,7 +180,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        Color32 vtColor = GetColor32(Int32.Parse(words[offset++]), parentColor);
+        byte localColor = (byte)Int32.Parse(words[offset++]);
+        byte vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
@@ -217,13 +210,13 @@ public class LdModelLoader
         }
 
         for (int i = 0; i < 3; ++i)
-            brickMesh.colors.Add(vtColor);
+            brickMesh.colorIndices.Add(vtColorIndex);
 
         return true;
     }
 
     private bool ParseQuadInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix,int parentColor, bool accumInvert, eWinding winding)
+        Matrix4x4 trMatrix, byte parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 14)
@@ -231,7 +224,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        Color32 vtColor = GetColor32(Int32.Parse(words[offset++]), parentColor);
+        byte localColor = (byte)Int32.Parse(words[offset++]);
+        byte vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
@@ -272,13 +266,13 @@ public class LdModelLoader
         }
 
         for (int i = 0; i < 6; ++i)
-            brickMesh.colors.Add(vtColor);
+            brickMesh.colorIndices.Add(vtColorIndex);
 
         return true;
     }
 
     private bool ParseModel(string[] readText, ref BrickMesh brickMesh,
-        Matrix4x4 trMatrix, int parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false)
+        Matrix4x4 trMatrix, byte parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false)
     {
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
@@ -330,13 +324,13 @@ public class LdModelLoader
     }
 
     private bool LoadModel(string fileName, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, int parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
+        Matrix4x4 trMatrix, byte parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
         if (disableStud)
         {
             if (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1)
             {
-                //Debug.Log(string.Format("Load cached file: {0}", fileName));
+                //Debug.Log(string.Format("Skipped file: {0}", fileName));
                 return true;
             }
         }
@@ -344,9 +338,7 @@ public class LdModelLoader
         if (brickCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
-            subBrickMesh.parentColor = parentColor;
-            subBrickMesh.localTr = trMatrix;
-            brickMesh.children.Add(subBrickMesh);
+            brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
             return true;
         }
 
@@ -366,9 +358,7 @@ public class LdModelLoader
                     if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
                     {
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
-                        subBrickMesh.parentColor = parentColor;
-                        subBrickMesh.localTr = trMatrix;
-                        brickMesh.children.Add(subBrickMesh);
+                        brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
                         return true;
                     }
                 }
@@ -385,9 +375,7 @@ public class LdModelLoader
             if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
             {
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
-                subBrickMesh.parentColor = parentColor;
-                subBrickMesh.localTr = trMatrix;
-                brickMesh.children.Add(subBrickMesh);
+                brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
                 return true;
             }
         }

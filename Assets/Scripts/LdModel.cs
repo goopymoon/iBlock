@@ -9,17 +9,17 @@ public class LdModel : MonoBehaviour
 
     private LdColorTable colorTable;
 
-    private void CreateMesh(Transform parent, BrickMesh brickMesh)
+    private void CreateMesh(BrickMesh brickMesh, Transform parent, byte parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         GameObject go = (GameObject)Instantiate(brickPrefab);
 
-        go.name = string.Format("{0} {1}", brickMesh.parentColor.ToString(), brickMesh.name);
+        go.name = brickMesh.brickInfo;
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh);
+        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, parentBrickColor);
 
-        foreach (var child in brickMesh.children)
+        for(int i = 0; i < brickMesh.children.Count; ++i)
         {
-            CreateMesh(go.transform, child);
+            CreateMesh(brickMesh.children[i], go.transform, brickMesh.brickColor);
         }
     }
 
@@ -28,20 +28,20 @@ public class LdModel : MonoBehaviour
     {
         GameObject mainCam = GameObject.Find("Main Camera");
         colorTable = mainCam.GetComponent<LdColorTable>();
-        LdModelLoader modelLoader = new LdModelLoader(colorTable);
+        LdModelLoader modelLoader = new LdModelLoader();
 
-        //var fileName = @"Creator/4349 - Bird.mpd";
-        var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
+        var fileName = @"Creator/4349 - Bird.mpd";
+        //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
         //var fileName = @"3857.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
-        if (!modelLoader.Load(fileName, ref brickMesh, true))
+        if (!modelLoader.Load(fileName, ref brickMesh, false))
         {
             Debug.Log(string.Format("Cannot parse: {0}", fileName));
             return;
         }
 
-        CreateMesh(transform, brickMesh);
+        CreateMesh(brickMesh, transform);
     }
 
     // Update is called once per frame

@@ -11,16 +11,8 @@ public class LdColorLoader
     public readonly string COLOR_REL_PATH = Path.Combine("..", "LdParts");
     public readonly string COLOR_CFG_FNAME = "LDConfig.ldr";
 
-    public readonly Color32 DefBrickColor;
-
     public LdColorLoader()
     {
-        DefBrickColor = new Color32();
-
-        DefBrickColor.r = 127;
-        DefBrickColor.g = 127;
-        DefBrickColor.b = 127;
-        DefBrickColor.a = 255;
     }
 
     private bool ParseColor(string[] readText, ref Dictionary<int, Color32> palette)
@@ -48,6 +40,9 @@ public class LdColorLoader
                     continue;
 
                 int code = Int32.Parse(words[4]);
+
+                if (code == LdConstant.LD_COLOR_MAIN) continue;
+                if (code == LdConstant.LD_COLOR_EDGE) continue;
 
                 string hexVal = words[6];
                 var RBuilder = new StringBuilder();
