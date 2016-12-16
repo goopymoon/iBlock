@@ -7,13 +7,15 @@ public class LdModel : MonoBehaviour
 {
     public GameObject brickPrefab;
 
+    private LdColorTable colorTable;
+
     private void CreateMesh(Transform parent, BrickMesh brickMesh)
     {
         GameObject go = (GameObject)Instantiate(brickPrefab);
 
         go.name = brickMesh.name;
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(brickMesh);
+        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh);
 
         foreach (var child in brickMesh.children)
         {
@@ -24,8 +26,9 @@ public class LdModel : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
-        GameObject colorTable = GameObject.Find("Main Camera");
-        LdModelLoader modelLoader = new LdModelLoader(colorTable.GetComponent<LdColorTable>());
+        GameObject mainCam = GameObject.Find("Main Camera");
+        colorTable = mainCam.GetComponent<LdColorTable>();
+        LdModelLoader modelLoader = new LdModelLoader(colorTable);
 
         var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
@@ -34,7 +37,7 @@ public class LdModel : MonoBehaviour
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh, false))
         {
-            Console.WriteLine("Cannot parse: {0}", fileName);
+            Debug.Log(string.Format("Cannot parse: {0}", fileName));
             return;
         }
 

@@ -96,7 +96,7 @@ public class LdColorLoader
 
         if (!File.Exists(filePath))
         {
-            Console.WriteLine("File does not exists: {0}", filePath);
+            Debug.Log(string.Format("File does not exists: {0}", filePath));
             return false;
         }
 

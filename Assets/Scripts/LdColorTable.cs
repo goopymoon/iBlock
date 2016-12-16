@@ -25,7 +25,7 @@ public class LdColorTable : MonoBehaviour
         string fileName = colorLoader.COLOR_CFG_FNAME;
         if (!colorLoader.Load(fileName, ref palette))
         {
-            Console.WriteLine("Cannot parse: {0}", fileName);
+            Debug.Log(string.Format("Cannot parse: {0}", fileName));
         }
     }
 

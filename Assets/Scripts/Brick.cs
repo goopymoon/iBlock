@@ -8,6 +8,7 @@ using System;
 public class BrickMesh
 {
     public string name { get; set; }
+    public int parentColor { get; set; }
     public Matrix4x4 localTr { get; set; }
     public List<Vector3> vertices { get; set; }
     public List<int> triangles { get; set; }
@@ -17,6 +18,10 @@ public class BrickMesh
     public BrickMesh(string meshName)
     {
         name = meshName;
+
+        parentColor = LdConstant.LD_COLOR_MAIN;
+
+        localTr = new Matrix4x4();
         localTr = Matrix4x4.identity;
 
         vertices = new List<Vector3>();
@@ -28,6 +33,10 @@ public class BrickMesh
     public BrickMesh(BrickMesh rhs)
     {
         name = rhs.name;
+
+        parentColor = rhs.parentColor;
+
+        localTr = new Matrix4x4();
         localTr = rhs.localTr;
 
         vertices = new List<Vector3>(rhs.vertices);
@@ -35,19 +44,26 @@ public class BrickMesh
         colors = new List<Color32>(rhs.colors);
         children = new List<BrickMesh>(rhs.children);
     }
+
+    public void AdjustColor(LdColorTable colorTable)
+    {
+        if (parentColor != LdConstant.LD_COLOR_MAIN)
+        {
+            for (int i = 0; i < colors.Count; ++i)
+                colors[i] = colorTable.GetColor(parentColor);
+        }
+    }
 }
 
 public class Brick : MonoBehaviour {
 
     private void TransformModel(BrickMesh brickMesh)
     {
-        Matrix4x4 tr = brickMesh.localTr;
-
         Vector3 localPosition;
         Quaternion localRotation;
         Vector3 localScale;
 
-        MatrixUtil.DecomposeMatrix(tr, out localPosition, out localRotation, out localScale);
+        MatrixUtil.DecomposeMatrix(brickMesh.localTr, out localPosition, out localRotation, out localScale);
 
         transform.localPosition = localPosition;
         transform.localRotation = localRotation;
@@ -59,11 +75,12 @@ public class Brick : MonoBehaviour {
         transform.SetParent(parent, false);
     }
 
-    public void CreateMesh(BrickMesh brickMesh)
+    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh)
     {
         Mesh mesh = new Mesh();
 
         TransformModel(brickMesh);
+        brickMesh.AdjustColor(colorTable);
 
         mesh.vertices = brickMesh.vertices.ToArray();
         mesh.triangles = brickMesh.triangles.ToArray();

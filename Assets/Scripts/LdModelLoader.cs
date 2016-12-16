@@ -302,7 +302,7 @@ public class LdModelLoader
                 case 1:
                     if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert))
                     {
-                        Console.WriteLine("ParseSubFileInfo failed: {0}", line);
+                        Debug.Log(string.Format("ParseSubFileInfo failed: {0}", line));
                         return false;
                     }
                     invertNext = false;
@@ -310,14 +310,14 @@ public class LdModelLoader
                 case 3:
                     if (!ParseTriInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
                     {
-                        Console.WriteLine("ParseTriInfo failed: {0}", line);
+                        Debug.Log(string.Format("ParseTriInfo failed: {0}", line));
                         return false;
                     }
                     break;
                 case 4:
                     if (!ParseQuadInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
                     {
-                        Console.WriteLine("ParseQuadInfo failed: {0}", line);
+                        Debug.Log(string.Format("ParseQuadInfo failed: {0}", line));
                         return false;
                     }
                     break;
@@ -335,12 +335,16 @@ public class LdModelLoader
         if (disableStud)
         {
             if (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1)
+            {
+                Debug.Log(string.Format("Load cached file: {0}", fileName));
                 return true;
+            }
         }
 
         if (brickCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
+            subBrickMesh.parentColor = parentColor;
             subBrickMesh.localTr = trMatrix;
             brickMesh.children.Add(subBrickMesh);
             return true;
@@ -359,9 +363,10 @@ public class LdModelLoader
                 if (i == 0 && subDirName.Length == 0)
                 {
                     BrickMesh subBrickMesh = new BrickMesh(fileName);
-                    if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity, parentColor, accInvertNext))
+                    if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
                     {
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
+                        subBrickMesh.parentColor = parentColor;
                         subBrickMesh.localTr = trMatrix;
                         brickMesh.children.Add(subBrickMesh);
                         return true;
@@ -377,9 +382,10 @@ public class LdModelLoader
         if (ldrCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(fileName);
-            if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity, parentColor, accInvertNext))
+            if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
             {
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
+                subBrickMesh.parentColor = parentColor;
                 subBrickMesh.localTr = trMatrix;
                 brickMesh.children.Add(subBrickMesh);
                 return true;
@@ -449,7 +455,7 @@ public class LdModelLoader
 
             if (!File.Exists(filePath))
             {
-                Console.WriteLine("File does not exists: {0}", filePath);
+                Debug.Log(string.Format("File does not exists: {0}", filePath));
                 return false;
             }
 
@@ -458,7 +464,7 @@ public class LdModelLoader
 
             if (mainModelName.Length == 0 || !ldrCache.ContainsKey(mainModelName))
             {
-                Console.WriteLine("Cannot find main model: {0}", mainModelName);
+                Debug.Log(string.Format("Cannot find main model: {0}", mainModelName));
                 return false;
             }
 

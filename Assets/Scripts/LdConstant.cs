@@ -16,7 +16,6 @@
     public const string TAG_INVERTNEXT = "INVERTNEXT";
 
     public const int LD_COLOR_MAIN = 16;
-    public const int LD_COLOR_EDGE = 24;
 
     public const string TAG_MPD_FILE_EXT = ".mpd";
     public const string TAG_LDR_FILE_EXT = ".ldr";
