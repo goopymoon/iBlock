@@ -336,7 +336,7 @@ public class LdModelLoader
         {
             if (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1)
             {
-                Debug.Log(string.Format("Load cached file: {0}", fileName));
+                //Debug.Log(string.Format("Load cached file: {0}", fileName));
                 return true;
             }
         }
