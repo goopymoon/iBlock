@@ -33,30 +33,25 @@ public class LdModelLoader
 
     private Vector3 ParseVector(string[] words, ref int offset)
     {
-        float x = float.Parse(words[offset++]);
-        float y = float.Parse(words[offset++]);
-        float z = float.Parse(words[offset++]);
+        Vector3 v;
 
         // Unity is LHS
-        return new Vector3(x, -1*y, z);
+        v.x = float.Parse(words[offset++]);
+        v.y = -1 * float.Parse(words[offset++]);
+        v.z = float.Parse(words[offset++]);
+
+        return v;
     }
 
     // Ldraw matrix
-    // a b c d e f g h iis a top left 3x3 matrix of a standard 4x4 homogeneous transformation matrix.
-    // This represents the rotation and scaling of the part.
-    // The entire 4x4 3D transformation matrix would then take either of the following forms :
-    // post-multiplication: [X*] = [X][R]
-    // / a d g 0 \
-    // | b e h 0 |
-    // | c f i 0 |
-    // \ x y z 1 /
-    // pre-multiplication: [X*] = inv[R] [X]
     // / a b c x \
     // | d e f y |
     // | g h i z |
     // \ 0 0 0 1 /
     private Matrix4x4 ParseMatrix(string[] words, ref int offset)
     {
+        Matrix4x4 m;
+
         float x = float.Parse(words[offset++]);
         float y = float.Parse(words[offset++]);
         float z = float.Parse(words[offset++]);
@@ -71,18 +66,24 @@ public class LdModelLoader
         float i = float.Parse(words[offset++]);
 
         // Unity is LHS
-        Vector4 right = new Vector4(a, -1*d, g, 0);
-        Vector4 up = new Vector4(-1*b, e, -1*h, 0);
-        Vector4 forward = new Vector4(c, -1*f, i, 0);
-        Vector4 pos = new Vector4(x, -1*y, z, 1);
+        m.m00 = a;
+        m.m01 = -1 * b;
+        m.m02 = c;
+        m.m03 = x;
+        m.m10 = -1 * d;
+        m.m11 = e;
+        m.m12 = -1 * f;
+        m.m13 = -1 * y;
+        m.m20 = g;
+        m.m21 = -1 * h;
+        m.m22 = i;
+        m.m23 = z;
+        m.m30 = 0;
+        m.m31 = 0;
+        m.m32 = 0;
+        m.m33 = 1;
 
-        Matrix4x4 matrix = new Matrix4x4();
-        matrix.SetColumn(0, right);
-        matrix.SetColumn(1, up);
-        matrix.SetColumn(2, forward);
-        matrix.SetColumn(3, pos);
-
-        return matrix;
+        return m;
     }
 
     private bool ParseBFCInfo(string line, ref eWinding winding, ref bool invertNext)
@@ -187,6 +188,8 @@ public class LdModelLoader
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
+        int lastIndex = brickMesh.vertices.Count;
+
         brickMesh.vertices.Add(v1);
         brickMesh.vertices.Add(v2);
         brickMesh.vertices.Add(v3);
@@ -195,7 +198,6 @@ public class LdModelLoader
         if (accumInvert) renderWinding = !renderWinding;
 
         // winding is for RHS so apply reverse for Unity
-        int lastIndex = brickMesh.triangles.Count;
         if (renderWinding)
         {
             brickMesh.triangles.Add(lastIndex + 0);
@@ -232,27 +234,25 @@ public class LdModelLoader
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v4 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
+        int lastIndex = brickMesh.vertices.Count;
+
         brickMesh.vertices.Add(v1);
         brickMesh.vertices.Add(v2);
         brickMesh.vertices.Add(v3);
-
-        brickMesh.vertices.Add(v3);
         brickMesh.vertices.Add(v4);
-        brickMesh.vertices.Add(v1);
 
         bool renderWinding = (winding == eWinding.CW);
         if (accumInvert) renderWinding = !renderWinding;
 
-        int lastIndex = brickMesh.triangles.Count;
         if (renderWinding)
         {
             brickMesh.triangles.Add(lastIndex + 0);
             brickMesh.triangles.Add(lastIndex + 1);
             brickMesh.triangles.Add(lastIndex + 2);
 
+            brickMesh.triangles.Add(lastIndex + 0);
+            brickMesh.triangles.Add(lastIndex + 2);
             brickMesh.triangles.Add(lastIndex + 3);
-            brickMesh.triangles.Add(lastIndex + 4);
-            brickMesh.triangles.Add(lastIndex + 5);
         }
         else
         {
@@ -260,12 +260,12 @@ public class LdModelLoader
             brickMesh.triangles.Add(lastIndex + 2);
             brickMesh.triangles.Add(lastIndex + 1);
 
+            brickMesh.triangles.Add(lastIndex + 0);
             brickMesh.triangles.Add(lastIndex + 3);
-            brickMesh.triangles.Add(lastIndex + 5);
-            brickMesh.triangles.Add(lastIndex + 4);
+            brickMesh.triangles.Add(lastIndex + 2);
         }
 
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < 4; ++i)
             brickMesh.colorIndices.Add(vtColorIndex);
 
         return true;
@@ -338,7 +338,7 @@ public class LdModelLoader
         if (brickCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
-            brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
+            brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
             return true;
         }
 
@@ -355,10 +355,10 @@ public class LdModelLoader
                 if (i == 0 && subDirName.Length == 0)
                 {
                     BrickMesh subBrickMesh = new BrickMesh(fileName);
-                    if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
+                    if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity))
                     {
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
-                        brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
+                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                         return true;
                     }
                 }
@@ -372,10 +372,10 @@ public class LdModelLoader
         if (ldrCache.ContainsKey(fileName))
         {
             BrickMesh subBrickMesh = new BrickMesh(fileName);
-            if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity, LdConstant.LD_COLOR_MAIN, accInvertNext))
+            if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity))
             {
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
-                brickMesh.AddChildBrick(parentColor, trMatrix, subBrickMesh);
+                brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                 return true;
             }
         }

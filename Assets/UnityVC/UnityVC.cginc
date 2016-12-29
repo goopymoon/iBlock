@@ -1,6 +1,7 @@
 ﻿/*
 Unity Standard Vertex Color Shader Lib v0.92 (for Unity 5.4.0)
 by defaxer
+Version for Unity 5.5.0f3 up by burp
 */
 
 #ifndef UNITY_VC_INCLUDED
@@ -14,7 +15,7 @@ struct VertexInput_VC
 {
 	float4 vertex	: POSITION;
 #if defined(_VERTEXCOLOR) || defined(_VERTEXCOLOR_LERP)
-    	fixed4 color    : COLOR;
+    fixed4 color    : COLOR;
 #endif
 	half3 normal	: NORMAL;
 	float2 uv0		: TEXCOORD0;
@@ -151,20 +152,20 @@ half4 fragForwardBase_VC (VertexOutputForwardBase_VC i) : SV_Target
 	s.reflUVW = i.reflUVW;
 #endif
 
-	UnityLight mainLight = MainLight (s.normalWorld);
+	UnityLight mainLight = MainLight ();
 	half atten = SHADOW_ATTENUATION(i);
 
 	half occlusion = Occlusion(i.tex.xy);
 	UnityGI gi = FragmentGI(s, occlusion, i.ambientOrLightmapUV, atten, mainLight);
 
-	half4 c = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.oneMinusRoughness, s.normalWorld, -s.eyeVec, gi.light, gi.indirect);
+	half4 c = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, gi.light, gi.indirect);
 #if _VERTEXCOLOR
     c *= i.color * _IntensityVC;
 #endif
 #if _VERTEXCOLOR_LERP
     c *= lerp(half4(1,1,1,1), i.color, _IntensityVC);
 #endif
-	c.rgb += UNITY_BRDF_GI (s.diffColor, s.specColor, s.oneMinusReflectivity, s.oneMinusRoughness, s.normalWorld, -s.eyeVec, occlusion, gi);
+	c.rgb += UNITY_BRDF_GI (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, occlusion, gi);
 	c.rgb += Emission(i.tex.xy); //i.color.a * s.diffColor;
 
 	UNITY_APPLY_FOG(i.fogCoord, c.rgb);
@@ -249,10 +250,10 @@ half4 fragForwardAdd_VC (VertexOutputForwardAdd_VC i) : SV_Target
 {
 	FRAGMENT_SETUP_FWDADD(s)
 
-	UnityLight light = AdditiveLight (s.normalWorld, IN_LIGHTDIR_FWDADD(i), LIGHT_ATTENUATION(i));
+	UnityLight light = AdditiveLight (IN_LIGHTDIR_FWDADD(i), LIGHT_ATTENUATION(i));
 	UnityIndirect noIndirect = ZeroIndirect ();
 
-	half4 c = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.oneMinusRoughness, s.normalWorld, -s.eyeVec, light, noIndirect);
+	half4 c = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, light, noIndirect);
 	c *= i.color;
 
 	UNITY_APPLY_FOG_COLOR(i.fogCoord, c.rgb, half4(0,0,0,0)); // fog towards black in additive pass
@@ -366,7 +367,7 @@ void fragDeferred_VC (
 #endif
 
 	// no analytic lights in this pass
-	UnityLight dummyLight = DummyLight (s.normalWorld);
+	UnityLight dummyLight = DummyLight ();
 	half atten = 1;
 
 	// only GI
@@ -379,14 +380,14 @@ void fragDeferred_VC (
 
 	UnityGI gi = FragmentGI(s, occlusion, i.ambientOrLightmapUV, atten, dummyLight, sampleReflectionsInDeferred);
 
-	half3 color = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.oneMinusRoughness, s.normalWorld, -s.eyeVec, gi.light, gi.indirect).rgb;
+	half3 color = UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, gi.light, gi.indirect).rgb;
 #if _VERTEXCOLOR
     color *= i.color * _IntensityVC;
 #endif
 #if _VERTEXCOLOR_LERP
     color *= lerp(half3(1,1,1), i.color.rgb, _IntensityVC);
 #endif
-	color += UNITY_BRDF_GI (s.diffColor, s.specColor, s.oneMinusReflectivity, s.oneMinusRoughness, s.normalWorld, -s.eyeVec, occlusion, gi);
+	color += UNITY_BRDF_GI (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, occlusion, gi);
 
 	#ifdef _EMISSION
 		color += Emission (i.tex.xy);
@@ -406,7 +407,7 @@ void fragDeferred_VC (
 #endif
 
     outDiffuse = half4(s.diffColor, occlusion);
-    outSpecSmoothness = half4(s.specColor, s.oneMinusRoughness);
+    outSpecSmoothness = half4(s.specColor, s.smoothness);
 	outNormal = half4(s.normalWorld*0.5+0.5,1);
 	outEmission = half4(color, 1);
 }
