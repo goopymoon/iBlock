@@ -11,7 +11,7 @@ public class BrickGenerator : MonoBehaviour
     private const int MAX_STUD_CNT_PER_MESH = 6;
 
     private void CreateMesh(BrickMesh brickMesh, Transform parent, int maxStudCnt, 
-        bool invertNext = false, byte parentBrickColor = LdConstant.LD_COLOR_MAIN)
+        bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         GameObject go = (GameObject)Instantiate(prefab);
 
@@ -32,8 +32,8 @@ public class BrickGenerator : MonoBehaviour
 
         //var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
-        var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
+        var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
+        //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
         //var fileName = @"3857.dat";
         //var fileName = @"3069b.dat";
         //var fileName = @"s/3069bs01.dat";

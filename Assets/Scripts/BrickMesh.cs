@@ -11,11 +11,11 @@ public class BrickMesh
 
     public List<Vector3> vertices { get; set; }
     public List<int> triangles { get; set; }
-    public List<byte> colorIndices { get; set; }
+    public List<short> colorIndices { get; set; }
     public List<BrickMesh> children { get; set; }
 
     public bool invertNext { get; set; }
-    public byte brickColor { get; private set; }
+    public short brickColor { get; private set; }
     private Matrix4x4 localTr;
     private BrickMesh studMesh = null;
 
@@ -32,7 +32,7 @@ public class BrickMesh
 
         vertices = new List<Vector3>();
         triangles = new List<int>();
-        colorIndices = new List<byte>();
+        colorIndices = new List<short>();
         children = new List<BrickMesh>();
 
         invertNext = false;
@@ -55,7 +55,7 @@ public class BrickMesh
         localTr = rhs.localTr;
     }
 
-    public void AddChildBrick(bool invert, byte color, Matrix4x4 trMatrix, BrickMesh child)
+    public void AddChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
         child.invertNext = invert;
         child.brickColor = color;
@@ -64,7 +64,7 @@ public class BrickMesh
         children.Add(child);
     }
 
-    public void MergeChildBrick(bool invert, byte color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
+    public void MergeChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
     {
         if (isStud)
         {
@@ -78,7 +78,7 @@ public class BrickMesh
         }
     }
 
-    public void MergeChildBrick(bool invert, byte color, Matrix4x4 trMatrix, BrickMesh child)
+    public void MergeChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
         bool invertFlag = invert ^ (localTr.determinant < 0);
         int vtCnt = vertices.Count;
@@ -142,19 +142,19 @@ public class BrickMesh
         }
     }
 
-    private void GetColors(LdColorTable colorTable, byte parentColor, ref List<Color32> colList)
+    private void GetColors(LdColorTable colorTable, short parentColor, ref List<Color32> colList)
     {
         for (int i = 0; i < colorIndices.Count; ++i)
         {
-            byte colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], parentColor);
+            short colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], parentColor);
             colList.Add(colorTable.GetColor(colorIndex));
         }
     }
 
-    public void GetMeshInfo(LdColorTable colorTable, bool invert, byte parentBrickColor, 
+    public void GetMeshInfo(LdColorTable colorTable, bool invert, short parentBrickColor, 
         ref List<Vector3> vts, ref List<int> tris, ref List<Color32> colors, int maxStudCnt)
     {
-        byte effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
+        short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
 
         vts.Clear();
         tris.Clear();

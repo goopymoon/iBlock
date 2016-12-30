@@ -15,14 +15,14 @@
     public const string TAG_CW = "CW";
     public const string TAG_INVERTNEXT = "INVERTNEXT";
 
-    public const byte LD_COLOR_MAIN = 16;
-    public const byte LD_COLOR_EDGE = 24;
+    public const short LD_COLOR_MAIN = 16;
+    public const short LD_COLOR_EDGE = 24;
 
     public const string TAG_MPD_FILE_EXT = ".mpd";
     public const string TAG_LDR_FILE_EXT = ".ldr";
     public const string TAG_DAT_FILE_EXT = ".dat";
 
-    static public byte GetEffectiveColorIndex(byte localColor, byte parentColor)
+    static public short GetEffectiveColorIndex(short localColor, short parentColor)
     {
         return (localColor != LdConstant.LD_COLOR_MAIN) ? localColor : parentColor;
     }

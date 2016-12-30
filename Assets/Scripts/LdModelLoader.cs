@@ -148,7 +148,7 @@ public class LdModelLoader
     }
 
     private bool ParseSubFileInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, byte parentColor, bool accumInvert)
+        Matrix4x4 trMatrix, short parentColor, bool accumInvert)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 15)
@@ -156,8 +156,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        byte localColor = (byte)Int32.Parse(words[offset++]);
-        byte colorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
+        short localColor = (short)Int32.Parse(words[offset++]);
+        short colorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Matrix4x4 mLocal = ParseMatrix(words, ref offset);
         string fname = words[offset];
@@ -172,7 +172,7 @@ public class LdModelLoader
     }
 
     private bool ParseTriInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, byte parentColor, bool accumInvert, eWinding winding)
+        Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 11)
@@ -180,8 +180,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        byte localColor = (byte)Int32.Parse(words[offset++]);
-        byte vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
+        short localColor = (short)Int32.Parse(words[offset++]);
+        short vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
@@ -217,7 +217,7 @@ public class LdModelLoader
     }
 
     private bool ParseQuadInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, byte parentColor, bool accumInvert, eWinding winding)
+        Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 14)
@@ -225,8 +225,8 @@ public class LdModelLoader
 
         int offset = 1;
 
-        byte localColor = (byte)Int32.Parse(words[offset++]);
-        byte vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
+        short localColor = (short)Int32.Parse(words[offset++]);
+        short vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
 
         Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
@@ -271,7 +271,7 @@ public class LdModelLoader
     }
 
     private bool ParseModel(string[] readText, ref BrickMesh brickMesh,
-        Matrix4x4 trMatrix, byte parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false)
+        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false)
     {
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
@@ -323,7 +323,7 @@ public class LdModelLoader
     }
 
     private bool LoadModel(string fileName, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, byte parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
+        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
         bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
 
