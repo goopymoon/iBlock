@@ -24,26 +24,22 @@ public class Brick : MonoBehaviour {
         transform.localScale = localScale;
     }
 
-    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, byte parentBrickColor)
+    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, byte parentBrickColor, int maxStudCnt = 6)
     {
-        byte effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
+        List<Vector3> vts = new List<Vector3>();
+        List<int> tris = new List<int>();
+        List<Color32> colors = new List<Color32>();
 
-        Color32[] colors = new Color32[brickMesh.colorIndices.Count];
-        brickMesh.GetColors(colorTable, effectiveParentColor, ref colors);
-
-        int[] tris = new int[brickMesh.triangles.Count];
-        brickMesh.GetTriangles(invertNext, ref tris);
+        brickMesh.GetMeshInfo(colorTable, invertNext, parentBrickColor, ref vts, ref tris, ref colors, maxStudCnt);
 
         Mesh mesh = new Mesh();
 
-        mesh.vertices = brickMesh.vertices.ToArray();
-        mesh.triangles = tris;
-        mesh.colors32 = colors;
+        mesh.vertices = vts.ToArray();
+        mesh.triangles = tris.ToArray();
+        mesh.colors32 = colors.ToArray();
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
-
-        //NormalSolver.RecalculateNormals(mesh, 30);
 
         TransformModel(brickMesh);
 

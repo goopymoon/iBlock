@@ -17,6 +17,9 @@ public class BrickMesh
     public bool invertNext { get; set; }
     public byte brickColor { get; private set; }
     private Matrix4x4 localTr;
+    private BrickMesh studMesh = null;
+
+    public const byte VERTEX_CNT_PER_STUD = 112;
 
     public string brickInfo()
     {
@@ -44,6 +47,7 @@ public class BrickMesh
         vertices = rhs.vertices;
         triangles = rhs.triangles;
         colorIndices = rhs.colorIndices;
+        studMesh = rhs.studMesh;
         children = rhs.children;
 
         invertNext = rhs.invertNext;
@@ -60,36 +64,111 @@ public class BrickMesh
         children.Add(child);
     }
 
+    public void MergeChildBrick(bool invert, byte color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
+    {
+        if (isStud)
+        {
+            if (studMesh == null)
+                studMesh = new BrickMesh("stud");
+            studMesh.MergeChildBrick(invert, color, trMatrix, child);
+        }
+        else
+        {
+            MergeChildBrick(invert, color, trMatrix, child);
+        }
+    }
+
+    public void MergeChildBrick(bool invert, byte color, Matrix4x4 trMatrix, BrickMesh child)
+    {
+        bool invertFlag = invert ^ (localTr.determinant < 0);
+        int vtCnt = vertices.Count;
+
+        for (int i = 0; i < child.vertices.Count; ++i)
+        {
+            vertices.Add(trMatrix.MultiplyPoint3x4(child.vertices[i]));
+        }
+
+        for (int i = 0; i < child.triangles.Count; i += 3)
+        {
+            if (invertFlag)
+            {
+                triangles.Add(vtCnt + child.triangles[i]);
+                triangles.Add(vtCnt + child.triangles[i + 2]);
+                triangles.Add(vtCnt + child.triangles[i + 1]);
+            }
+            else
+            {
+                triangles.Add(vtCnt + child.triangles[i]);
+                triangles.Add(vtCnt + child.triangles[i + 1]);
+                triangles.Add(vtCnt + child.triangles[i + 2]);
+            }
+        }
+
+        for (int i = 0; i < child.colorIndices.Count; ++i)
+        {
+            colorIndices.Add(LdConstant.GetEffectiveColorIndex(child.colorIndices[i], color));
+        }
+    }
+
     public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
     {
         MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);
     }
 
-    public void GetTriangles(bool invert, ref int[] tris)
+    private void GetVertices(ref List<Vector3> vts)
     {
-        bool invertFlag = invert ^ invertNext ^ (localTr.determinant < 0);
+        for (int i = 0; i < vertices.Count; ++i)
+            vts.Add(vertices[i]);
+    }
+
+    private void GetTriangles(bool invert, ref List<int> tris, int offset = 0)
+    {
+        bool invertFlag = invert ^ invertNext;
+        invertFlag ^= (localTr.determinant < 0);
+
         if (!invertFlag)
         {
             for (int i = 0; i < triangles.Count; i++)
-                tris[i] = triangles[i];
+                tris.Add(offset + triangles[i]);
         }
         else
         {
             for (int i = 0; i < triangles.Count; i += 3)
             {
-                tris[i] = triangles[i];
-                tris[i + 1] = triangles[i + 2];
-                tris[i + 2] = triangles[i + 1];
+                tris.Add(offset + triangles[i]);
+                tris.Add(offset + triangles[i + 2]);
+                tris.Add(offset + triangles[i + 1]);
             }
         }
     }
 
-    public void GetColors(LdColorTable colorTable, byte parentColor, ref Color32[] colList)
+    private void GetColors(LdColorTable colorTable, byte parentColor, ref List<Color32> colList)
     {
         for (int i = 0; i < colorIndices.Count; ++i)
         {
-            byte colorIndex = (colorIndices[i] == LdConstant.LD_COLOR_MAIN) ? parentColor : colorIndices[i];
-            colList[i] = colorTable.GetColor(colorIndex);
+            byte colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], parentColor);
+            colList.Add(colorTable.GetColor(colorIndex));
+        }
+    }
+
+    public void GetMeshInfo(LdColorTable colorTable, bool invert, byte parentBrickColor, 
+        ref List<Vector3> vts, ref List<int> tris, ref List<Color32> colors, int maxStudCnt)
+    {
+        byte effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
+
+        vts.Clear();
+        tris.Clear();
+        colors.Clear();
+
+        GetVertices(ref vts);
+        GetTriangles(invert, ref tris);
+        GetColors(colorTable, effectiveParentColor, ref colors);
+
+        if (studMesh != null && studMesh.vertices.Count < VERTEX_CNT_PER_STUD * maxStudCnt)
+        {
+            studMesh.GetVertices(ref vts);
+            studMesh.GetTriangles(invert, ref tris, vertices.Count);
+            studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
         }
     }
 }

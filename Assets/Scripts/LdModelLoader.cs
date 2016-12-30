@@ -19,7 +19,6 @@ public class LdModelLoader
     };
     private readonly string MODEL_REL_PATH = Path.Combine("..", "LdModels");
 
-    private bool disableStud = false;
     private Dictionary<string, List<string>> ldrCache;
     private Dictionary<string, BrickMesh> brickCache;
 
@@ -326,21 +325,7 @@ public class LdModelLoader
     private bool LoadModel(string fileName, ref BrickMesh brickMesh, 
         Matrix4x4 trMatrix, byte parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
-        if (disableStud)
-        {
-            if (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1)
-            {
-                //Debug.Log(string.Format("Skipped file: {0}", fileName));
-                return true;
-            }
-        }
-
-        if (brickCache.ContainsKey(fileName))
-        {
-            BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
-            brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-            return true;
-        }
+        bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
 
         for (int i = 0; i < PARTS_REL_PATH.Length; ++i)
         {
@@ -350,21 +335,33 @@ public class LdModelLoader
 
             if (File.Exists(filePath))
             {
-                string[] readText = File.ReadAllLines(filePath);
-
-                if (i == 0 && subDirName.Length == 0)
+                if (brickCache.ContainsKey(fileName))
                 {
+                    BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
+
+                    if (i == 0 && subDirName.Length == 0)
+                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                    else
+                        brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+
+                    return true;
+                }
+                else
+                {
+                    string[] readText = File.ReadAllLines(filePath);
+
                     BrickMesh subBrickMesh = new BrickMesh(fileName);
                     if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity))
                     {
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
-                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+
+                        if (i == 0 && subDirName.Length == 0)
+                            brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                        else
+                            brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+
                         return true;
                     }
-                }
-                else
-                {
-                    return ParseModel(readText, ref brickMesh, trMatrix, parentColor, accInvertNext);
                 }
             }
         }
@@ -428,11 +425,10 @@ public class LdModelLoader
         return mainModelName;
     }
 
-    public bool Load(string fileName, ref BrickMesh brickMesh, bool disable=false)
+    public bool Load(string fileName, ref BrickMesh brickMesh)
     {
         string ext = Path.GetExtension(fileName);
 
-        disableStud = disable;
         certifed = eCertified.NA;
         Matrix4x4 transform = Matrix4x4.identity;
 
