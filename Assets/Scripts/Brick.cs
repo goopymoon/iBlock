@@ -25,14 +25,14 @@ public class Brick : MonoBehaviour {
     }
 
     public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, 
-        short parentBrickColor, int maxStudCnt = 6)
+        short parentBrickColor, bool optimizeStud, int maxStudCnt = 6)
     {
         List<Vector3> vts = new List<Vector3>();
         List<int> tris = new List<int>();
         List<Color32> colors = new List<Color32>();
 
         brickMesh.GetMeshInfo(colorTable, invertNext, parentBrickColor, 
-            ref vts, ref tris, ref colors, maxStudCnt);
+            ref vts, ref tris, ref colors, optimizeStud, maxStudCnt);
 
         Mesh mesh = new Mesh();
 

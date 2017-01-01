@@ -20,6 +20,7 @@ public class BrickMesh
     private BrickMesh studMesh = null;
 
     public const byte VERTEX_CNT_PER_STUD = 112;
+    private const int VERTEX_CNT_LIMTI_PER_MESH = 65000;
 
     public string brickInfo()
     {
@@ -80,7 +81,6 @@ public class BrickMesh
 
     public void MergeChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
-        bool invertFlag = invert ^ (localTr.determinant < 0);
         int vtCnt = vertices.Count;
 
         for (int i = 0; i < child.vertices.Count; ++i)
@@ -90,7 +90,7 @@ public class BrickMesh
 
         for (int i = 0; i < child.triangles.Count; i += 3)
         {
-            if (invertFlag)
+            if (invert)
             {
                 triangles.Add(vtCnt + child.triangles[i]);
                 triangles.Add(vtCnt + child.triangles[i + 2]);
@@ -157,7 +157,7 @@ public class BrickMesh
     }
 
     public void GetMeshInfo(LdColorTable colorTable, bool invert, short parentBrickColor, 
-        ref List<Vector3> vts, ref List<int> tris, ref List<Color32> colors, int maxStudCnt)
+        ref List<Vector3> vts, ref List<int> tris, ref List<Color32> colors, bool optimizeStud, int maxStudCnt)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
 
@@ -169,11 +169,21 @@ public class BrickMesh
         GetTriangles(invert, ref tris);
         GetColors(colorTable, effectiveParentColor, ref colors);
 
-        if (studMesh != null && studMesh.vertices.Count < VERTEX_CNT_PER_STUD * maxStudCnt)
+        if (studMesh != null)
         {
-            studMesh.GetVertices(ref vts);
-            studMesh.GetTriangles(invert, ref tris, vertices.Count);
-            studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
+            bool drawStud = (vertices.Count + studMesh.vertices.Count > VERTEX_CNT_LIMTI_PER_MESH) ? false : true;
+            if (drawStud)
+            {
+                if (optimizeStud && studMesh.vertices.Count > VERTEX_CNT_PER_STUD * maxStudCnt)
+                    drawStud = false;
+            }
+
+            if (drawStud)
+            {
+                studMesh.GetVertices(ref vts);
+                studMesh.GetTriangles(invert, ref tris, vertices.Count);
+                studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
+            }
         }
     }
 }

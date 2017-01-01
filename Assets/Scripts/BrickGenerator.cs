@@ -10,19 +10,19 @@ public class BrickGenerator : MonoBehaviour
     private LdColorTable colorTable;
     private const int MAX_STUD_CNT_PER_MESH = 6;
 
-    private void CreateMesh(BrickMesh brickMesh, Transform parent, int maxStudCnt, 
+    private void CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         GameObject go = (GameObject)Instantiate(prefab);
 
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, invertNext, parentBrickColor, maxStudCnt);
+        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, invertNext, parentBrickColor, optimizeStud, maxStudCnt);
 
         for (int i = 0; i < brickMesh.children.Count; ++i)
         {
             bool invertFlag = invertNext ^ brickMesh.invertNext;
-            CreateMesh(brickMesh.children[i], go.transform, maxStudCnt, invertFlag, brickMesh.brickColor);
+            CreateMesh(brickMesh.children[i], go.transform, optimizeStud, maxStudCnt, invertFlag, brickMesh.brickColor);
         }
     }
 
@@ -32,9 +32,10 @@ public class BrickGenerator : MonoBehaviour
 
         //var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
-        //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
+        //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
+        var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
         //var fileName = @"3069b.dat";
+        //var fileName = @"3857.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))
@@ -43,7 +44,8 @@ public class BrickGenerator : MonoBehaviour
             return;
         }
 
-        CreateMesh(brickMesh, transform, MAX_STUD_CNT_PER_MESH);
+        bool optimizeStud = false;
+        CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
     }
 
     // Use this for initialization
