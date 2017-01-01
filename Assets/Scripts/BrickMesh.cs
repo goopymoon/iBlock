@@ -110,6 +110,11 @@ public class BrickMesh
         }
     }
 
+    public void Optimize(float angle = BrickMeshOptimizer.SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE)
+    {
+        BrickMeshOptimizer.Optimize(this, angle);
+    }
+
     public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
     {
         MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);

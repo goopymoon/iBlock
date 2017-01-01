@@ -353,6 +353,7 @@ public class LdModelLoader
                     BrickMesh subBrickMesh = new BrickMesh(fileName);
                     if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity))
                     {
+                        subBrickMesh.Optimize();
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
 
                         if (i == 0 && subDirName.Length == 0)

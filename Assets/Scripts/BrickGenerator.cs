@@ -34,9 +34,7 @@ public class BrickGenerator : MonoBehaviour
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
         var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
         //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
-        //var fileName = @"3857.dat";
         //var fileName = @"3069b.dat";
-        //var fileName = @"s/3069bs01.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))
