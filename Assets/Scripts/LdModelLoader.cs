@@ -369,11 +369,19 @@ public class LdModelLoader
 
         if (ldrCache.ContainsKey(fileName))
         {
+            var subDirName = Path.GetDirectoryName(fileName);
+
             BrickMesh subBrickMesh = new BrickMesh(fileName);
             if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity))
             {
+                subBrickMesh.Optimize();
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
-                brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+
+                if (subDirName.Length == 0)
+                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                else
+                    brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+
                 return true;
             }
         }
