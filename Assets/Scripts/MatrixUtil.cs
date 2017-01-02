@@ -5,37 +5,27 @@ public static class MatrixUtil
 {
     public static Vector3 ExtractTranslationFromMatrix(Matrix4x4 matrix)
     {
-        Vector3 translate;
-        translate.x = matrix.m03;
-        translate.y = matrix.m13;
-        translate.z = matrix.m23;
+        Vector3 translate = (Vector3)matrix.GetColumn(3);
 
         return translate;
     }
 
     public static Quaternion ExtractRotationFromMatrix(Matrix4x4 matrix)
     {
-        Vector3 upwards;
-        upwards.x = matrix.m01;
-        upwards.y = matrix.m11;
-        upwards.z = matrix.m21;
-
-        Vector3 forward;
-        forward.x = matrix.m02;
-        forward.y = matrix.m12;
-        forward.z = matrix.m22;
+        Vector3 upwards = (Vector3)matrix.GetColumn(1);
+        Vector3 forward = (Vector3)matrix.GetColumn(2);
 
         return Quaternion.LookRotation(forward, upwards);
     }
 
     static Vector3 ExtractScaleFromMatrix(Matrix4x4 matrix)
     {
-        Vector3 scale = new Vector3(
-            matrix.GetColumn(0).magnitude,
-            matrix.GetColumn(1).magnitude,
-            matrix.GetColumn(2).magnitude);
+        Vector3 right = (Vector3)matrix.GetColumn(0);
+        Vector3 upwards = (Vector3)matrix.GetColumn(1);
+        Vector3 forward = (Vector3)matrix.GetColumn(2);
 
-        if (Vector3.Cross(matrix.GetColumn(0), matrix.GetColumn(1)).normalized != (Vector3)matrix.GetColumn(2).normalized)
+        Vector3 scale = new Vector3(right.magnitude, upwards.magnitude, forward.magnitude);
+        if (Vector3.Dot(Vector3.Cross(right, upwards).normalized, forward.normalized) < 0)
         {
             scale.x *= -1;
         }

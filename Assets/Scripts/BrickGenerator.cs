@@ -31,11 +31,10 @@ public class BrickGenerator : MonoBehaviour
         LdModelLoader modelLoader = new LdModelLoader();
 
         //var fileName = @"Creator/4349 - Bird.mpd";
-        //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
+        var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
         //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
-        var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
+        //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
         //var fileName = @"3069b.dat";
-        //var fileName = @"3857.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))
@@ -44,7 +43,7 @@ public class BrickGenerator : MonoBehaviour
             return;
         }
 
-        bool optimizeStud = false;
+        bool optimizeStud = true;
         CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
     }
 

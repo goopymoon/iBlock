@@ -76,6 +76,12 @@ public class BrickMesh
         else
         {
             MergeChildBrick(invert, color, trMatrix, child);
+            if (child.studMesh != null)
+            {
+                if (studMesh == null)
+                    studMesh = new BrickMesh("stud");
+                studMesh.MergeChildBrick(invert, color, trMatrix, child.studMesh);
+            }
         }
     }
 
