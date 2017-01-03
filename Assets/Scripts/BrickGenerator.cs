@@ -22,7 +22,8 @@ public class BrickGenerator : MonoBehaviour
         for (int i = 0; i < brickMesh.children.Count; ++i)
         {
             bool invertFlag = invertNext ^ brickMesh.invertNext;
-            CreateMesh(brickMesh.children[i], go.transform, optimizeStud, maxStudCnt, invertFlag, brickMesh.brickColor);
+            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
+            CreateMesh(brickMesh.children[i], go.transform, optimizeStud, maxStudCnt, invertFlag, accuColor);
         }
     }
 
@@ -31,8 +32,8 @@ public class BrickGenerator : MonoBehaviour
         LdModelLoader modelLoader = new LdModelLoader();
 
         //var fileName = @"Creator/4349 - Bird.mpd";
-        //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
+        var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
+        //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
         //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
         //var fileName = @"3069b.dat";
 

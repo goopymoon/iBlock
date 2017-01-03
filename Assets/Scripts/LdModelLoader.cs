@@ -164,9 +164,6 @@ public class LdModelLoader
         for (int i = offset + 1; i < words.Length; ++i)
             fname += words[i];
 
-        if (mLocal.determinant < 0)
-            accumInvert = !accumInvert;
-
         Matrix4x4 mAcc = trMatrix * mLocal;
         return LoadModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert);
     }
@@ -378,7 +375,7 @@ public class LdModelLoader
                 brickCache[fileName] = new BrickMesh(subBrickMesh);
 
                 if (subDirName.Length == 0)
-                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                    brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                 else
                     brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
 

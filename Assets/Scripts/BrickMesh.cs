@@ -89,6 +89,8 @@ public class BrickMesh
     {
         int vtCnt = vertices.Count;
 
+        invert ^= (localTr.determinant < 0);
+
         for (int i = 0; i < child.vertices.Count; ++i)
         {
             vertices.Add(trMatrix.MultiplyPoint3x4(child.vertices[i]));
@@ -135,7 +137,6 @@ public class BrickMesh
     private void GetTriangles(bool invert, ref List<int> tris, int offset = 0)
     {
         bool invertFlag = invert ^ invertNext;
-        invertFlag ^= (localTr.determinant < 0);
 
         if (!invertFlag)
         {
