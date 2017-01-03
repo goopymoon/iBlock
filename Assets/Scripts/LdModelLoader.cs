@@ -148,7 +148,7 @@ public class LdModelLoader
     }
 
     private bool ParseSubFileInfo(string line, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, short parentColor, bool accumInvert)
+        Matrix4x4 trMatrix, short parentColor, bool accumInvert, bool accumInvertByMatrix)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 15)
@@ -164,8 +164,11 @@ public class LdModelLoader
         for (int i = offset + 1; i < words.Length; ++i)
             fname += words[i];
 
+        if (mLocal.determinant < 0)
+            accumInvertByMatrix = !accumInvertByMatrix;
+
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return LoadModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert);
+        return LoadModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
     }
 
     private bool ParseTriInfo(string line, ref BrickMesh brickMesh, 
@@ -268,7 +271,7 @@ public class LdModelLoader
     }
 
     private bool ParseModel(string[] readText, ref BrickMesh brickMesh,
-        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false)
+        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
     {
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
@@ -290,7 +293,7 @@ public class LdModelLoader
                     ParseBFCInfo(line, ref winding, ref invertNext);
                     break;
                 case 1:
-                    if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert))
+                    if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
                     {
                         Debug.Log(string.Format("ParseSubFileInfo failed: {0}", line));
                         return false;
@@ -320,7 +323,7 @@ public class LdModelLoader
     }
 
     private bool LoadModel(string fileName, ref BrickMesh brickMesh, 
-        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
+        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
     {
         bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
 
@@ -339,7 +342,7 @@ public class LdModelLoader
                     if (i == 0 && subDirName.Length == 0)
                         brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                     else
-                        brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+                        brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
 
                     return true;
                 }
@@ -356,7 +359,7 @@ public class LdModelLoader
                         if (i == 0 && subDirName.Length == 0)
                             brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                         else
-                            brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+                            brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
 
                         return true;
                     }
@@ -377,7 +380,7 @@ public class LdModelLoader
                 if (subDirName.Length == 0)
                     brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                 else
-                    brickMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh, isStud);
+                    brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
 
                 return true;
             }

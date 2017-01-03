@@ -65,31 +65,31 @@ public class BrickMesh
         children.Add(child);
     }
 
-    public void MergeChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
+    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
     {
         if (isStud)
         {
             if (studMesh == null)
                 studMesh = new BrickMesh("stud");
-            studMesh.MergeChildBrick(invert, color, trMatrix, child);
+            studMesh.MergeChildBrick(invert, invertByMatrix, color, trMatrix, child);
         }
         else
         {
-            MergeChildBrick(invert, color, trMatrix, child);
+            MergeChildBrick(invert, invertByMatrix, color, trMatrix, child);
             if (child.studMesh != null)
             {
                 if (studMesh == null)
                     studMesh = new BrickMesh("stud");
-                studMesh.MergeChildBrick(invert, color, trMatrix, child.studMesh);
+                studMesh.MergeChildBrick(invert, invertByMatrix, color, trMatrix, child.studMesh);
             }
         }
     }
 
-    public void MergeChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child)
+    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
         int vtCnt = vertices.Count;
 
-        invert ^= (localTr.determinant < 0);
+        bool inverted = invert ^ invertByMatrix;
 
         for (int i = 0; i < child.vertices.Count; ++i)
         {
@@ -98,7 +98,7 @@ public class BrickMesh
 
         for (int i = 0; i < child.triangles.Count; i += 3)
         {
-            if (invert)
+            if (inverted)
             {
                 triangles.Add(vtCnt + child.triangles[i]);
                 triangles.Add(vtCnt + child.triangles[i + 2]);
