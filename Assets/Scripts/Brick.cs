@@ -24,6 +24,15 @@ public class Brick : MonoBehaviour {
         transform.localScale = localScale;
     }
 
+    private void AddCollider()
+    {
+        var renderer = GetComponent<Renderer>();
+        BoxCollider BC = renderer.gameObject.AddComponent<BoxCollider>();
+
+        BC.center = renderer.bounds.center;
+        BC.size = renderer.bounds.size;
+    }
+
     public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, 
         short parentBrickColor, bool optimizeStud, int maxStudCnt = 6)
     {
@@ -43,9 +52,11 @@ public class Brick : MonoBehaviour {
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
-        TransformModel(brickMesh);
-
         GetComponent<MeshFilter>().mesh = mesh;
+
+        AddCollider();
+
+        TransformModel(brickMesh);
     }
 
     void DebugNormal()

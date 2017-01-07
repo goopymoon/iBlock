@@ -48,11 +48,18 @@ public class BrickGenerator : MonoBehaviour
         CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
     }
 
+    private void Awake()
+    {
+        colorTable = new LdColorTable();
+
+        colorTable.Initialize();    
+    }
+
     // Use this for initialization
     void Start ()
     {
-        GameObject mainCam = GameObject.Find("Main Camera");
-        colorTable = mainCam.GetComponent<LdColorTable>();
+        //GameObject mainCam = GameObject.Find("Main Camera");
+        //colorTable = mainCam.GetComponent<LdColorTable>();
 
         LoadModel();
     }
@@ -60,7 +67,5 @@ public class BrickGenerator : MonoBehaviour
     // Update is called once per frame
     void Update ()
     {
-        if (Input.GetKeyDown(KeyCode.B))
-            LoadModel();
     }
 }

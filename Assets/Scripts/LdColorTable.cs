@@ -4,13 +4,13 @@ using System.Collections.Generic;
 
 using System;
 
-public class LdColorTable : MonoBehaviour
+public class LdColorTable
 {
     private LdColorLoader colorLoader;
     private Dictionary<int, Color32> palette;
     private readonly Color32 DEF_BRICK_COLOR;
 
-    LdColorTable()
+    public LdColorTable()
     {
         DEF_BRICK_COLOR = new Color32();
 
@@ -28,7 +28,7 @@ public class LdColorTable : MonoBehaviour
             return DEF_BRICK_COLOR;
     }
 
-    void Awake()
+    public void Initialize()
     {
         colorLoader = new LdColorLoader();
         palette = new Dictionary<int, Color32>();
@@ -39,14 +39,4 @@ public class LdColorTable : MonoBehaviour
             Debug.Log(string.Format("Cannot parse: {0}", fileName));
         }
     }
-
-    // Use this for initialization
-    void Start ()
-    {
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
 }
