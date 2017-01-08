@@ -133,6 +133,7 @@ public static class BrickMeshOptimizer
                         finalReplaceIndex = vtIndices[finalReplaceIndex].replaceIndex;
                         if (finalReplaceIndex == firstReplaceIndex)
                         {
+                            //Debug.Log(string.Format("Cancle Replace: {0} with {1}", vtIndices[key].replaceIndex, firstReplaceIndex));
                             vtIndices[key].replaceFlag = false;
                             break;
                         }
@@ -159,6 +160,8 @@ public static class BrickMeshOptimizer
                     vtIndices[vtIndices[oriIndex].replaceIndex].validPos : vtIndices[oriIndex].validPos;
                 triangles[i] = resultIndex;
             }
+
+            //Debug.Log(string.Format("Reduced vertices of {0} : {1} to {2}", mesh.name, vertices.Count, shrinkedVertices.Count));
 
             mesh.vertices = shrinkedVertices;
             mesh.colorIndices = shrinkedColors;

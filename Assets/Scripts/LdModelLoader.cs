@@ -371,11 +371,9 @@ public class LdModelLoader
         {
             var subDirName = Path.GetDirectoryName(fileName);
 
-            BrickMesh subBrickMesh = new BrickMesh(fileName);
-            if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity))
+            if (brickCache.ContainsKey(fileName))
             {
-                subBrickMesh.Optimize();
-                brickCache[fileName] = new BrickMesh(subBrickMesh);
+                BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
 
                 if (subDirName.Length == 0)
                     brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
@@ -383,6 +381,22 @@ public class LdModelLoader
                     brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
 
                 return true;
+            }
+            else
+            {
+                BrickMesh subBrickMesh = new BrickMesh(fileName);
+                if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity))
+                {
+                    subBrickMesh.Optimize();
+                    brickCache[fileName] = new BrickMesh(subBrickMesh);
+
+                    if (subDirName.Length == 0)
+                        brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                    else
+                        brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
+
+                    return true;
+                }
             }
         }
 
