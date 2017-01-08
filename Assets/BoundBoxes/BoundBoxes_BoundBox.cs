@@ -6,10 +6,10 @@ using System.Collections.Generic;
 public class BoundBoxes_BoundBox : MonoBehaviour
 {	
 	public bool colliderBased = false;
-	public bool permanent = false; //permanent//onMouseDown
-	
-	public Color lineColor = new Color(0f, 1f, 0.4f, 0.74f);
+    public bool drawFlag = false;
+    public Color lineColor = new Color(0f, 1f, 0.4f, 0.74f);
 
+    public bool isInitialized = false;
 	private Bounds bound;
 
 	private Vector3[] corners;
@@ -33,13 +33,16 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	private Vector3 bottomBackLeft;
 	private Vector3 bottomBackRight;
 	
-    public void init()
+    public void PrepareBounds()
     {
+        if (isInitialized)
+            return;
+
         CalculateBounds();
         SetPoints();
         SetLines();
 
-        cameralines.SetOutlines(lines, lineColor);
+        isInitialized = true;
     }
 
     void CalculateBounds()
@@ -154,10 +157,23 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         mcamera = Camera.main;
         cameralines = mcamera.GetComponent<BoundBoxes_drawLines>();
 
-        init();
+        if (drawFlag)
+        {
+            PrepareBounds();
+            cameralines.SetOutlines(lines, lineColor);
+        }
     }
 
-    void Update()
+        void Update()
     {
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            drawFlag = !drawFlag;
+            if (drawFlag)
+            {
+                PrepareBounds();
+                cameralines.SetOutlines(lines, lineColor);
+            }
+        }
     }
 }

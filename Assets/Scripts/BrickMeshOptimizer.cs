@@ -126,23 +126,30 @@ public static class BrickMeshOptimizer
             {
                 if (vtIndices[key].replaceFlag)
                 {
-                    int finalReplaceIndex = vtIndices[key].replaceIndex;
+                    int firstReplaceIndex = vtIndices[key].replaceIndex;
+                    int finalReplaceIndex = firstReplaceIndex;
                     while (vtIndices[finalReplaceIndex].replaceFlag)
                     {
                         finalReplaceIndex = vtIndices[finalReplaceIndex].replaceIndex;
+                        if (finalReplaceIndex == firstReplaceIndex)
+                        {
+                            vtIndices[key].replaceFlag = false;
+                            break;
+                        }
                     }
 
-                    //Debug.Log(string.Format("Replace: {0} to {1}", vtIndices[key].replaceIndex, finalReplaceIndex));
-
-                    vtIndices[key].replaceIndex = finalReplaceIndex;
+                    if (vtIndices[key].replaceFlag)
+                    {
+                        //Debug.Log(string.Format("Replace: {0} to {1}", vtIndices[key].replaceIndex, finalReplaceIndex));
+                        vtIndices[key].replaceIndex = finalReplaceIndex;
+                        continue;
+                    }
                 }
-                else
-                {
-                    shrinkedVertices.Add(vertices[key]);
-                    shrinkedColors.Add(colors[key]);
 
-                    vtIndices[key].validPos = serialIndex++;
-                }
+                shrinkedVertices.Add(vertices[key]);
+                shrinkedColors.Add(colors[key]);
+
+                vtIndices[key].validPos = serialIndex++;
             }
 
             for (var i = 0; i < triangles.Count; i++)

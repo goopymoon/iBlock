@@ -6,6 +6,8 @@ using System;
 
 public class Brick : MonoBehaviour {
 
+    public bool enableCollider = false;
+
     public void SetParent(Transform parent)
     {
         transform.SetParent(parent, false);
@@ -54,9 +56,10 @@ public class Brick : MonoBehaviour {
 
         GetComponent<MeshFilter>().mesh = mesh;
 
-        AddCollider();
-
         TransformModel(brickMesh);
+
+        if (enableCollider)
+            AddCollider();
     }
 
     void DebugNormal()

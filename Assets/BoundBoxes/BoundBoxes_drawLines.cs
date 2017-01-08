@@ -5,7 +5,6 @@ using System.Collections.Generic;
 public class BoundBoxes_drawLines : MonoBehaviour
 {
 	public Material lineMaterial;
-    public bool drawFlag = false;
 
     private List<Vector3[,]> outlines;
 	private List<Color> colors;
@@ -22,7 +21,7 @@ public class BoundBoxes_drawLines : MonoBehaviour
 
 	void OnPostRender()
     {
-		if(outlines==null || !drawFlag) return;
+		if(outlines==null) return;
 
 	    lineMaterial.SetPass( 0 );
 	    GL.Begin( GL.LINES );
@@ -51,7 +50,5 @@ public class BoundBoxes_drawLines : MonoBehaviour
 	// Update is called once per frame
 	void Update()
     {
-        if (Input.GetKeyDown(KeyCode.B))
-            drawFlag = !drawFlag;
     }
 }
