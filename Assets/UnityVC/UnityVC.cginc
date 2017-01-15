@@ -77,7 +77,7 @@ struct VertexOutputForwardBase_VC
     fixed4 color                        : COLOR;
 #endif
 	// next ones would not fit into SM2.0 limits, but they are always for SM3.0+
-	#if UNITY_SPECCUBE_BOX_PROJECTION || UNITY_LIGHT_PROBE_PROXY_VOLUME
+	#if UNITY_REQUIRE_FRAG_WORLDPOS
 		float3 posWorld					: TEXCOORD8;
 	#endif
 
@@ -296,7 +296,7 @@ VertexOutputDeferred_VC vertDeferred_VC (VertexInput_VC v)
 	UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
 	float4 posWorld = mul(unity_ObjectToWorld, v.vertex);
-	#if UNITY_SPECCUBE_BOX_PROJECTION || UNITY_LIGHT_PROBE_PROXY_VOLUME
+	#if UNITY_REQUIRE_FRAG_WORLDPOS
 		o.posWorld = posWorld;
 	#endif
 	o.pos = UnityObjectToClipPos(v.vertex);

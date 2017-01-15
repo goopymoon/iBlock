@@ -164,7 +164,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         }
     }
 
-        void Update()
+    void Update()
     {
         if (Input.GetKeyDown(KeyCode.B))
         {
