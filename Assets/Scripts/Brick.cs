@@ -35,28 +35,32 @@ public class Brick : MonoBehaviour {
         BC.size = renderer.bounds.size;
     }
 
-    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, 
+    public void CreateMesh(bool isOpaque, LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, 
         short parentBrickColor, bool optimizeStud, int maxStudCnt = 6)
     {
-        List<Vector3> vts = new List<Vector3>();
-        List<int> tris = new List<int>();
-        List<Color32> colors = new List<Color32>();
+        TransformModel(brickMesh);
 
-        brickMesh.GetMeshInfo(colorTable, invertNext, parentBrickColor, 
-            ref vts, ref tris, ref colors, optimizeStud, maxStudCnt);
+        if (brickMesh.vertices.Count == 0)
+            return;
+
+        List<Vector3> vts = new List<Vector3>();
+        List<Color32> colors = new List<Color32>();
+        List<int> tris = new List<int>();
+
+        brickMesh.GetRenderMeshInfo(isOpaque, colorTable, invertNext, parentBrickColor, 
+            ref vts, ref colors, ref tris, optimizeStud, maxStudCnt);
 
         Mesh mesh = new Mesh();
 
         mesh.vertices = vts.ToArray();
-        mesh.triangles = tris.ToArray();
         mesh.colors32 = colors.ToArray();
+
+        mesh.SetTriangles(tris.ToArray(), 0);
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
         GetComponent<MeshFilter>().mesh = mesh;
-
-        TransformModel(brickMesh);
 
         if (enableCollider)
             AddCollider();

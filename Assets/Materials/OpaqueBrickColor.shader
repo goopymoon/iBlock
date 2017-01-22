@@ -6,14 +6,12 @@
         
     SubShader
     {
-        Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" "IgnoreProjector" = "True" }
-        Blend SrcAlpha OneMinusSrcAlpha
+        Tags{ "RenderType" = "Opaque" "Queue" = "Geometry" }
         LOD 200
-        Cull off
 
         CGPROGRAM
 
-        #pragma surface surf Standard keepalpha vertex:vert fullforwardshadows
+        #pragma surface surf Standard vertex:vert fullforwardshadows
         #pragma target 3.0
 
         struct Input
@@ -40,7 +38,6 @@
         {
             o.Albedo = IN.vertexColor.rgb;
             o.Smoothness = _Glossiness;
-            o.Alpha = IN.vertexColor.a;
         }
 
         ENDCG

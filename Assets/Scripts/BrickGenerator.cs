@@ -1,23 +1,26 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 using System;
 
 public class BrickGenerator : MonoBehaviour
 {
-    public GameObject prefab;
+    public GameObject opaquePrefab;
+    public GameObject transparentPrefab;
 
     private LdColorTable colorTable;
     private const int MAX_STUD_CNT_PER_MESH = 6;
 
-    private void CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
+    private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        GameObject go = (GameObject)Instantiate(prefab);
+        bool isOpaque = brickMesh.IsOpaque(colorTable, parentBrickColor);
 
+        GameObject go = isOpaque ? (GameObject)Instantiate(opaquePrefab) : (GameObject)Instantiate(transparentPrefab);
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, invertNext, parentBrickColor, optimizeStud, maxStudCnt);
+        go.GetComponent<Brick>().CreateMesh(isOpaque, colorTable, brickMesh, invertNext, parentBrickColor, optimizeStud, maxStudCnt);
 
         for (int i = 0; i < brickMesh.children.Count; ++i)
         {
@@ -25,9 +28,11 @@ public class BrickGenerator : MonoBehaviour
             short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
             CreateMesh(brickMesh.children[i], go.transform, optimizeStud, maxStudCnt, invertFlag, accuColor);
         }
+
+        return go;
     }
 
-    void LoadModel()
+    GameObject LoadModel()
     {
         LdModelLoader modelLoader = new LdModelLoader();
 
@@ -35,32 +40,29 @@ public class BrickGenerator : MonoBehaviour
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
         var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
         //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
-        //var fileName = @"3069b.dat";
+        //var fileName = @"73435.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))
         {
             Debug.Log(string.Format("Cannot parse: {0}", fileName));
-            return;
+            return null;
         }
 
         bool optimizeStud = true;
-        CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
+        return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
     }
 
     private void Awake()
     {
         colorTable = new LdColorTable();
 
-        colorTable.Initialize();    
+        colorTable.Initialize();
     }
 
     // Use this for initialization
     void Start ()
     {
-        //GameObject mainCam = GameObject.Find("Main Camera");
-        //colorTable = mainCam.GetComponent<LdColorTable>();
-
         LoadModel();
     }
 
