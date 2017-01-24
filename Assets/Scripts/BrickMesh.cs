@@ -22,6 +22,10 @@ public class BrickMesh
     private Matrix4x4 localTr;
     private BrickMesh studMesh = null;
 
+    enum BrickTransparency : byte {
+        Opaque, Transparent, Mixed
+    };
+
     public string brickInfo()
     {
         return string.Format("{0}: {1}", brickColor.ToString(), name);
@@ -189,30 +193,6 @@ public class BrickMesh
         }
     }
 
-    public bool IsOpaque(LdColorTable colorTable, short parentBrickColor)
-    {
-        short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
-        int alphaCnt = 0;
-
-        for (int i = 0; i < colorIndices.Count; ++i)
-        {
-            short colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], effectiveParentColor);
-            var vtColor = colorTable.GetColor(colorIndex);
-
-            if (vtColor.a < 255)
-                alphaCnt++;
-        }
-
-        if (alphaCnt > 0)
-        {
-            Debug.Assert(alphaCnt == colorIndices.Count, 
-                string.Format("{0} contains {1} opaque vertices.", name, colorIndices.Count - alphaCnt));
-            return false;
-        }
-
-        return true;
-    }
-
     public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
     {
         MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);
@@ -233,7 +213,7 @@ public class BrickMesh
         }
     }
 
-    private void GetTriangles(bool invert, List<Color32> colors, bool isOpaque, ref List<int> tris, int offset = 0)
+    private void GetTriangles(bool invert, List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris, int offset = 0)
     {
         bool invertFlag = invert ^ invertNext;
 
@@ -260,44 +240,55 @@ public class BrickMesh
                     alphaCnt++;
             }
 
-            if (isOpaque ? (alphaCnt == 0) : (alphaCnt == 3))
+            Debug.Assert(alphaCnt == 0 || alphaCnt == 3, string.Format("Alpha count is not zero or three: {0}", alphaCnt));
+
+            if (alphaCnt == 0)
             {
-                tris.Add(vtIndex[0]);
-                tris.Add(vtIndex[1]);
-                tris.Add(vtIndex[2]);
+                opaqueTris.Add(vtIndex[0]);
+                opaqueTris.Add(vtIndex[1]);
+                opaqueTris.Add(vtIndex[2]);
+            }
+            else if (alphaCnt == 3)
+            {
+                transparentTris.Add(vtIndex[0]);
+                transparentTris.Add(vtIndex[1]);
+                transparentTris.Add(vtIndex[2]);
             }
         }
     }
 
-    public void GetRenderMeshInfo(bool isOpaque, LdColorTable colorTable, bool invert, short parentBrickColor,
-        ref List<Vector3> vts, ref List<Color32> colors, ref List<int> tris,
+    public bool CanDrawStud(bool optimizeStud, int maxStudCnt)
+    {
+        if (studMesh == null)
+            return false;
+
+        bool drawStud = (vertices.Count + studMesh.vertices.Count > VERTEX_CNT_LIMTI_PER_MESH) ? false : true;
+        if (drawStud && optimizeStud && studMesh.vertices.Count > VERTEX_CNT_PER_STUD * maxStudCnt)
+            drawStud = false;
+
+        return drawStud;
+    }
+
+    public void GetRenderMeshInfo(LdColorTable colorTable, short parentBrickColor, bool invert, 
+        ref List<Vector3> vts, ref List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris,
         bool optimizeStud, int maxStudCnt)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
 
         vts.Clear();
-        tris.Clear();
         colors.Clear();
+        opaqueTris.Clear();
+        transparentTris.Clear();
 
         GetVertices(ref vts);
         GetColors(colorTable, effectiveParentColor, ref colors);
-        GetTriangles(invert, colors, isOpaque, ref tris);
+        GetTriangles(invert, colors, ref opaqueTris, ref transparentTris);
 
-        if (studMesh != null)
+        if (CanDrawStud(optimizeStud, maxStudCnt))
         {
-            bool drawStud = (vertices.Count + studMesh.vertices.Count > VERTEX_CNT_LIMTI_PER_MESH) ? false : true;
-            if (drawStud)
-            {
-                if (optimizeStud && studMesh.vertices.Count > VERTEX_CNT_PER_STUD * maxStudCnt)
-                    drawStud = false;
-            }
-
-            if (drawStud)
-            {
-                studMesh.GetVertices(ref vts);
-                studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
-                studMesh.GetTriangles(invert, colors, isOpaque, ref tris, vertices.Count);
-            }
+            studMesh.GetVertices(ref vts);
+            studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
+            studMesh.GetTriangles(invert, colors, ref opaqueTris, ref transparentTris, vertices.Count);
         }
     }
 }

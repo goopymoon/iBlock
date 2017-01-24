@@ -15,12 +15,11 @@ public class BrickGenerator : MonoBehaviour
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        bool isOpaque = brickMesh.IsOpaque(colorTable, parentBrickColor);
+        GameObject go = (GameObject)Instantiate(opaquePrefab);
 
-        GameObject go = isOpaque ? (GameObject)Instantiate(opaquePrefab) : (GameObject)Instantiate(transparentPrefab);
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(isOpaque, colorTable, brickMesh, invertNext, parentBrickColor, optimizeStud, maxStudCnt);
+        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, parentBrickColor, invertNext, optimizeStud, maxStudCnt);
 
         for (int i = 0; i < brickMesh.children.Count; ++i)
         {
@@ -38,9 +37,9 @@ public class BrickGenerator : MonoBehaviour
 
         //var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
+        //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
         //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
-        //var fileName = @"73435.dat";
+        var fileName = @"73435.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))

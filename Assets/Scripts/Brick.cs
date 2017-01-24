@@ -35,8 +35,7 @@ public class Brick : MonoBehaviour {
         BC.size = renderer.bounds.size;
     }
 
-    public void CreateMesh(bool isOpaque, LdColorTable colorTable, BrickMesh brickMesh, bool invertNext, 
-        short parentBrickColor, bool optimizeStud, int maxStudCnt = 6)
+    public void CreateMesh(LdColorTable colorTable, BrickMesh brickMesh, short parentBrickColor, bool invertNext, bool optimizeStud, int maxStudCnt)
     {
         TransformModel(brickMesh);
 
@@ -45,18 +44,48 @@ public class Brick : MonoBehaviour {
 
         List<Vector3> vts = new List<Vector3>();
         List<Color32> colors = new List<Color32>();
-        List<int> tris = new List<int>();
+        List<int> opaqueTris = new List<int>();
+        List<int> transparentTris = new List<int>();
 
-        brickMesh.GetRenderMeshInfo(isOpaque, colorTable, invertNext, parentBrickColor, 
-            ref vts, ref colors, ref tris, optimizeStud, maxStudCnt);
+        brickMesh.GetRenderMeshInfo(colorTable, parentBrickColor, invertNext,
+            ref vts, ref colors, ref opaqueTris, ref transparentTris, optimizeStud, maxStudCnt);
 
         Mesh mesh = new Mesh();
 
         mesh.vertices = vts.ToArray();
         mesh.colors32 = colors.ToArray();
 
-        mesh.SetTriangles(tris.ToArray(), 0);
+        if (opaqueTris.Count > 0)
+        {
+            mesh.SetTriangles(opaqueTris.ToArray(), 0);
+            if (transparentTris.Count > 0)
+            {
+                mesh.subMeshCount = 2;
 
+                Material[] customeMaterial = new Material[2];
+
+                customeMaterial[0] = Resources.Load("Materials/OpaqueBrickColor", typeof(Material)) as Material;
+                customeMaterial[1] = Resources.Load("Materials/TransparentBrickColor", typeof(Material)) as Material;
+                MeshRenderer renderer = GetComponent<MeshRenderer>();
+                if (renderer != null)
+                    renderer.materials = customeMaterial;
+
+                mesh.SetTriangles(transparentTris.ToArray(), 1);
+            }
+        }
+        else
+        {
+            if (transparentTris.Count > 0)
+            {
+                Material customeMaterial = Resources.Load("Materials/TransparentBrickColor", typeof(Material)) as Material;
+                MeshRenderer renderer = GetComponent<MeshRenderer>();
+                if (renderer != null)
+                    renderer.material = customeMaterial;
+
+                mesh.SetTriangles(transparentTris.ToArray(), 0);
+            }
+        }
+        
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
