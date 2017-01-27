@@ -69,8 +69,7 @@ public class Brick : MonoBehaviour {
                     Material defaultMat = renderer.material;
 
                     Material[] customeMaterial = new Material[2];
-                    customeMaterial[0] = BrickMaterial.Instance.GetMaterial(BrickMaterial.BrickMaterialType.Opaque);
-                    //customeMaterial[0] = defaultMat;
+                    customeMaterial[0] = defaultMat;
                     customeMaterial[1] = BrickMaterial.Instance.GetMaterial(BrickMaterial.BrickMaterialType.Transparent);
                     renderer.materials = customeMaterial;
                 }
