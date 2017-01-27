@@ -1,22 +1,21 @@
 ﻿Shader "OpaqueBrickColor" {
     Properties
     {
-        _Glossiness("Smoothness", Range(0, 1)) = 1.0
+        _Glossiness("Smoothness", Range(0, 1)) = 0.5
     }
         
     SubShader
     {
         Tags{ "RenderType" = "Opaque" "Queue" = "Geometry" }
+        Cull off
         LOD 200
 
         CGPROGRAM
-
         #pragma surface surf Standard vertex:vert fullforwardshadows
         #pragma target 3.0
 
         struct Input
         {
-            float2 uv_MainTex;
             float4 vertexColor;
         };
 
@@ -38,6 +37,7 @@
         {
             o.Albedo = IN.vertexColor.rgb;
             o.Smoothness = _Glossiness;
+            o.Specular = IN.vertexColor.rgb;
         }
 
         ENDCG

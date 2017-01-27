@@ -9,7 +9,6 @@ public class BrickGenerator : MonoBehaviour
     public GameObject opaquePrefab;
     public GameObject transparentPrefab;
 
-    private LdColorTable colorTable;
     private const int MAX_STUD_CNT_PER_MESH = 6;
 
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
@@ -19,7 +18,7 @@ public class BrickGenerator : MonoBehaviour
 
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        go.GetComponent<Brick>().CreateMesh(colorTable, brickMesh, parentBrickColor, invertNext, optimizeStud, maxStudCnt);
+        go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext, optimizeStud, maxStudCnt);
 
         for (int i = 0; i < brickMesh.children.Count; ++i)
         {
@@ -37,9 +36,9 @@ public class BrickGenerator : MonoBehaviour
 
         //var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
+        var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
         //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
-        var fileName = @"73435.dat";
+        //var fileName = @"73435.dat";
 
         BrickMesh brickMesh = new BrickMesh(fileName);
         if (!modelLoader.Load(fileName, ref brickMesh))
@@ -54,9 +53,8 @@ public class BrickGenerator : MonoBehaviour
 
     private void Awake()
     {
-        colorTable = new LdColorTable();
-
-        colorTable.Initialize();
+        LdColorTable.Instance.Initialize();
+        BrickMaterial.Instance.Initialize();
     }
 
     // Use this for initialization

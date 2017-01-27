@@ -4,11 +4,30 @@ using System.Collections.Generic;
 
 using System;
 
-public class LdColorTable
+public class LdColorTable : MonoBehaviour
 {
-    private LdColorLoader colorLoader;
-    private Dictionary<int, Color32> palette;
     private readonly Color32 DEF_BRICK_COLOR;
+    private Dictionary<int, Color32> _palette;
+
+    private static LdColorTable _instance;
+    public static LdColorTable Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = GameObject.FindObjectOfType(typeof(LdColorTable)) as LdColorTable;
+                if (_instance == null)
+                {
+                    GameObject container = new GameObject();
+                    container.name = "LdColorTableContainer";
+                    _instance = container.AddComponent(typeof(LdColorTable)) as LdColorTable;
+                }
+            }
+
+            return _instance;
+        }
+    }
 
     public LdColorTable()
     {
@@ -22,19 +41,19 @@ public class LdColorTable
 
     public Color32 GetColor(int colorIndex)
     {
-        if (palette.ContainsKey(colorIndex))
-            return palette[colorIndex];
+        if (_palette.ContainsKey(colorIndex))
+            return _palette[colorIndex];
         else
             return DEF_BRICK_COLOR;
     }
 
     public void Initialize()
     {
-        colorLoader = new LdColorLoader();
-        palette = new Dictionary<int, Color32>();
+        LdColorLoader colorLoader = new LdColorLoader();
+        _palette = new Dictionary<int, Color32>();
 
         string fileName = colorLoader.COLOR_CFG_FNAME;
-        if (!colorLoader.Load(fileName, ref palette))
+        if (!colorLoader.Load(fileName, ref _palette))
         {
             Debug.Log(string.Format("Cannot parse: {0}", fileName));
         }

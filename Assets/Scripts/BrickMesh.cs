@@ -204,12 +204,12 @@ public class BrickMesh
             vts.Add(vertices[i]);
     }
 
-    private void GetColors(LdColorTable colorTable, short parentColor, ref List<Color32> colList)
+    private void GetColors(short parentColor, ref List<Color32> colList)
     {
         for (int i = 0; i < colorIndices.Count; ++i)
         {
             short colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], parentColor);
-            colList.Add(colorTable.GetColor(colorIndex));
+            colList.Add(LdColorTable.Instance.GetColor(colorIndex));
         }
     }
 
@@ -269,7 +269,7 @@ public class BrickMesh
         return drawStud;
     }
 
-    public void GetRenderMeshInfo(LdColorTable colorTable, short parentBrickColor, bool invert, 
+    public void GetRenderMeshInfo(short parentBrickColor, bool invert, 
         ref List<Vector3> vts, ref List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris,
         bool optimizeStud, int maxStudCnt)
     {
@@ -281,13 +281,13 @@ public class BrickMesh
         transparentTris.Clear();
 
         GetVertices(ref vts);
-        GetColors(colorTable, effectiveParentColor, ref colors);
+        GetColors(effectiveParentColor, ref colors);
         GetTriangles(invert, colors, ref opaqueTris, ref transparentTris);
 
         if (CanDrawStud(optimizeStud, maxStudCnt))
         {
             studMesh.GetVertices(ref vts);
-            studMesh.GetColors(colorTable, effectiveParentColor, ref colors);
+            studMesh.GetColors(effectiveParentColor, ref colors);
             studMesh.GetTriangles(invert, colors, ref opaqueTris, ref transparentTris, vertices.Count);
         }
     }
