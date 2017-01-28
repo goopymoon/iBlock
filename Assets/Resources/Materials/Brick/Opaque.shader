@@ -1,8 +1,8 @@
-﻿Shader "OpaqueDoubleSideBrick" {
+﻿Shader "Brick/Opaque" {
     SubShader
     {
         Tags{ "RenderType" = "Opaque" "Queue" = "Geometry" }
-        Cull off
+        Cull Back
         LOD 200
 
         CGPROGRAM

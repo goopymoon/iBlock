@@ -1,4 +1,4 @@
-﻿Shader "Reveal Backfaces" {
+﻿Shader "Debug/Reveal Backfaces" {
 	Properties{
 		_MainTex("Base (RGB)", 2D) = "white" { }
 	}

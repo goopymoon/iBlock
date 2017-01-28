@@ -40,8 +40,8 @@ public class BrickMaterial : MonoBehaviour
         _materialPath.Clear();
         _customeMaterial.Clear();
 
-        _materialPath.Add(BrickMaterialType.Opaque, "Materials/OpaqueBrick");
-        _materialPath.Add(BrickMaterialType.Transparent, "Materials/TransparentBrick");
+        _materialPath.Add(BrickMaterialType.Opaque, "Materials/Brick/Opaque");
+        _materialPath.Add(BrickMaterialType.Transparent, "Materials/Brick/Transparent");
 
         for (var i = BrickMaterialType.BEGIN; i <= BrickMaterialType.END; ++i)
         {

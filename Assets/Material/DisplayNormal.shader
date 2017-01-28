@@ -1,4 +1,4 @@
-Shader "Display Normals" {
+Shader "Debug/Display Normals" {
 	SubShader{ 
 		Pass{
 			CGPROGRAM

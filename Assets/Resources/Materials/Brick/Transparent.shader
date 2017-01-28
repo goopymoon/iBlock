@@ -1,15 +1,15 @@
-﻿Shader "TransparentBrick" {
+﻿Shader "Brick/Transparent" {
     SubShader
     {
         Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" }
-        LOD 200
-
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
+        LOD 200
+
         Cull Back
 
         CGPROGRAM
-        #pragma surface surf_fade Lambert vertex:vert alpha:fade
+        #pragma surface surf_fade Lambert vertex:vert keepalpha
         #include "brickVC.cginc"
         ENDCG
     }
