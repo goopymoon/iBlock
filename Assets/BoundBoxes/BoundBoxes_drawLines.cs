@@ -36,17 +36,23 @@ public class BoundBoxes_drawLines : MonoBehaviour
 		}
 		GL.End();
 	}
-		
-	public void SetOutlines(Vector3[,] newOutlines, Color newcolor)
+
+    public void ClearOutlines()
     {
-		if(newOutlines.GetLength(0) > 0)
+        outlines.Clear();
+        colors.Clear();
+    }
+
+    public void SetOutlines(Vector3[,] newOutlines, Color newcolor)
+    {
+        if (newOutlines.GetLength(0) > 0)
         {
-			outlines.Add(newOutlines);
-			//Debug.Log ("no "+newOutlines.GetLength(0).ToString());
-			colors.Add(newcolor);
-		}
-	}	
-	
+            outlines.Add(newOutlines);
+            //Debug.Log ("no "+newOutlines.GetLength(0).ToString());
+            colors.Add(newcolor);
+        }
+    }
+
 	// Update is called once per frame
 	void Update()
     {

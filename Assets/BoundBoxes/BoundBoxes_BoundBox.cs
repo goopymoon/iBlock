@@ -174,6 +174,10 @@ public class BoundBoxes_BoundBox : MonoBehaviour
                 PrepareBounds();
                 cameralines.SetOutlines(lines, lineColor);
             }
+            else
+            {
+                cameralines.ClearOutlines();
+            }
         }
     }
 }
