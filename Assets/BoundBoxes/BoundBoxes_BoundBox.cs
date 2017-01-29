@@ -22,7 +22,6 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	
 	private Renderer[] renderers;
 	private MeshFilter[] meshes;
-	private Material[][] Materials;
 	
 	private Vector3 topFrontLeft;
 	private Vector3 topFrontRight;
@@ -47,9 +46,12 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 
     void CalculateBounds()
     {
-		quat = transform.rotation;//object axis AABB
+        //object axis AABB
+        quat = transform.rotation;
+
+        //world axis
 		if(renderers[0].isPartOfStaticBatch)
-            quat = Quaternion.Euler(0f,0f,0f);//world axis
+            quat = Quaternion.Euler(0f,0f,0f);
 		
 		if(colliderBased)
         {
@@ -144,12 +146,6 @@ public class BoundBoxes_BoundBox : MonoBehaviour
     {
         renderers = GetComponentsInChildren<Renderer>();
         meshes = GetComponentsInChildren<MeshFilter>();
-
-        Materials = new Material[renderers.Length][];
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Materials[i] = renderers[i].materials;
-        }
     }
 
     void Start()

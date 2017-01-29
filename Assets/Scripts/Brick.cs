@@ -30,7 +30,6 @@ public class Brick : MonoBehaviour {
     {
         var renderer = GetComponent<Renderer>();
         BoxCollider BC = renderer.gameObject.AddComponent<BoxCollider>();
-
         BC.center = renderer.bounds.center;
         BC.size = renderer.bounds.size;
     }
@@ -45,7 +44,7 @@ public class Brick : MonoBehaviour {
         {
             customeMaterial[i] = BrickMaterial.Instance.GetMaterial(matType + matIndexOffset + i);
         }
-        renderer.materials = customeMaterial;
+        renderer.sharedMaterials = customeMaterial;
     }
 
     public void CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext, bool optimizeStud, int maxStudCnt)
