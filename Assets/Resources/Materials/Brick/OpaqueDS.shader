@@ -9,7 +9,7 @@
         Cull Back
 
         CGPROGRAM
-        #pragma surface surf_opaque Lambert vertex:vert fullforwardshadows
+        #pragma surface surf_opaque Lambert vertex:vert
         #include "brickVC.cginc"
         ENDCG
 
@@ -18,7 +18,7 @@
         Cull Front
 
         CGPROGRAM
-        #pragma surface surf_opaque Lambert vertex:vert_back fullforwardshadows
+        #pragma surface surf_opaque Lambert vertex:vert_back
         #include "brickVC.cginc"
         ENDCG
     }

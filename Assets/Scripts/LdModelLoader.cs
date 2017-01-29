@@ -22,8 +22,6 @@ public class LdModelLoader
     private Dictionary<string, List<string>> ldrCache;
     private Dictionary<string, BrickMesh> brickCache;
 
-    private eCertified certifed = eCertified.NA;
-
     public LdModelLoader()
     {
         ldrCache = new Dictionary<string, List<string>>();
@@ -85,7 +83,7 @@ public class LdModelLoader
         return m;
     }
 
-    private bool ParseBFCInfo(string line, ref eWinding winding, ref bool invertNext)
+    private bool ParseBFCInfo(string line, ref eCertified certified, ref eWinding winding, ref bool invertNext)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 2)
@@ -100,11 +98,11 @@ public class LdModelLoader
         {
             offset++;
 
-            Debug.Assert(certifed != eCertified.TRUE, "Previous Certificate should not be TRUE.");
+            Debug.Assert(certified != eCertified.TRUE, "Previous Certificate should not be TRUE.");
 
-            if (certifed == eCertified.NA)
+            if (certified == eCertified.NA)
             {
-                certifed = eCertified.FALSE;
+                certified = eCertified.FALSE;
                 return true;
             }
         }
@@ -112,10 +110,10 @@ public class LdModelLoader
         {
             offset++;
 
-            Debug.Assert(certifed != eCertified.FALSE, "Previous Certificate should not be FALSE.");
+            Debug.Assert(certified != eCertified.FALSE, "Previous Certificate should not be FALSE.");
 
-            if (certifed == eCertified.NA)
-                certifed = eCertified.TRUE;
+            if (certified == eCertified.NA)
+                certified = eCertified.TRUE;
         }
 
         if (offset >= words.Length)
@@ -273,6 +271,7 @@ public class LdModelLoader
     private bool ParseModel(string[] readText, ref BrickMesh brickMesh,
         Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
     {
+        eCertified certified = eCertified.NA;
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
 
@@ -290,7 +289,7 @@ public class LdModelLoader
             switch (lineType)
             {
                 case 0:
-                    ParseBFCInfo(line, ref winding, ref invertNext);
+                    ParseBFCInfo(line, ref certified, ref winding, ref invertNext);
                     break;
                 case 1:
                     if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
@@ -319,6 +318,8 @@ public class LdModelLoader
             }
         }
 
+        brickMesh.bfcEnabled = certified == eCertified.TRUE;
+    
         return true;
     }
 
@@ -339,7 +340,7 @@ public class LdModelLoader
                 {
                     BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
 
-                    if (i == 0 && subDirName.Length == 0)
+                    if ((i == 0 && subDirName.Length == 0))
                         brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                     else
                         brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
@@ -356,7 +357,7 @@ public class LdModelLoader
                         subBrickMesh.Optimize();
                         brickCache[fileName] = new BrickMesh(subBrickMesh);
 
-                        if (i == 0 && subDirName.Length == 0)
+                        if ((i == 0 && subDirName.Length == 0))
                             brickMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
                         else
                             brickMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
@@ -451,8 +452,6 @@ public class LdModelLoader
     public bool Load(string fileName, ref BrickMesh brickMesh)
     {
         string ext = Path.GetExtension(fileName);
-
-        certifed = eCertified.NA;
         Matrix4x4 transform = Matrix4x4.identity;
 
         if (ext.Equals(LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
@@ -475,7 +474,17 @@ public class LdModelLoader
                 return false;
             }
 
-            return ParseModel(ldrCache[mainModelName].ToArray(), ref brickMesh, transform);
+            return LoadModel(mainModelName, ref brickMesh, transform);
+        }
+        else if (ext.Equals(LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!ldrCache.ContainsKey(fileName))
+            {
+                Debug.Log(string.Format("Cannot find ldr model: {0}", fileName));
+                return false;
+            }
+
+            return ParseModel(ldrCache[fileName].ToArray(), ref brickMesh, transform);
         }
         else
         {

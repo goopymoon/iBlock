@@ -11,7 +11,7 @@
         Cull Back
 
         CGPROGRAM
-        #pragma surface surf_fade Lambert vertex:vert keepalpha
+        #pragma surface surf_fade Lambert vertex:vert alpha:fade
         #include "brickVC.cginc"
         ENDCG
 

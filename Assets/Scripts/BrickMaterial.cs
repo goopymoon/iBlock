@@ -4,16 +4,20 @@ using UnityEngine;
 
 public class BrickMaterial : MonoBehaviour
 {
-    public enum BrickMaterialType {
+    public enum MatType
+    {
         Opaque,
         Transparent,
+        OpaqueDS,
+        TransparentDS,
         BEGIN = Opaque,
-        END = Transparent,
+        END = TransparentDS,
         DEFAUTL = BEGIN,
+        DS_OFFSET = OpaqueDS - Opaque,
     };
 
-    private Dictionary<BrickMaterialType, string> _materialPath = new Dictionary<BrickMaterialType, string>();
-    private Dictionary<BrickMaterialType, Material> _customeMaterial = new Dictionary<BrickMaterialType, Material>();
+    private Dictionary<MatType, string> _materialPath = new Dictionary<MatType, string>();
+    private Dictionary<MatType, Material> _customeMaterial = new Dictionary<MatType, Material>();
 
     private static BrickMaterial _instance;
     public static BrickMaterial Instance
@@ -40,10 +44,12 @@ public class BrickMaterial : MonoBehaviour
         _materialPath.Clear();
         _customeMaterial.Clear();
 
-        _materialPath.Add(BrickMaterialType.Opaque, "Materials/Brick/Opaque");
-        _materialPath.Add(BrickMaterialType.Transparent, "Materials/Brick/Transparent");
+        _materialPath.Add(MatType.Opaque, "Materials/Brick/Opaque");
+        _materialPath.Add(MatType.OpaqueDS, "Materials/Brick/OpaqueDS");
+        _materialPath.Add(MatType.Transparent, "Materials/Brick/Transparent");
+        _materialPath.Add(MatType.TransparentDS, "Materials/Brick/TransparentDS");
 
-        for (var i = BrickMaterialType.BEGIN; i <= BrickMaterialType.END; ++i)
+        for (var i = MatType.BEGIN; i <= MatType.END; ++i)
         {
             Material temp = Resources.Load(_materialPath[i], typeof(Material)) as Material;
             if (temp != null)
@@ -58,13 +64,13 @@ public class BrickMaterial : MonoBehaviour
         }
     }
 
-    public Material GetMaterial(BrickMaterialType matType)
+    public Material GetMaterial(MatType matType)
     {
         Material temp;
         if (_customeMaterial.TryGetValue(matType, out temp))
             return temp;
         else
-            return _customeMaterial[BrickMaterialType.DEFAUTL];
+            return _customeMaterial[MatType.DEFAUTL];
     }
 
     // Use this for initialization

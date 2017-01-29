@@ -35,6 +35,19 @@ public class Brick : MonoBehaviour {
         BC.size = renderer.bounds.size;
     }
 
+    private void ChangeMaterial(BrickMaterial.MatType matType, int matIndexOffset, int matCnt)
+    {
+        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        if (renderer == null) return;
+
+        Material[] customeMaterial = new Material[matCnt];
+        for (int i = 0; i < matCnt; ++i)
+        {
+            customeMaterial[i] = BrickMaterial.Instance.GetMaterial(matType + matIndexOffset + i);
+        }
+        renderer.materials = customeMaterial;
+    }
+
     public void CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext, bool optimizeStud, int maxStudCnt)
     {
         TransformModel(brickMesh);
@@ -51,46 +64,34 @@ public class Brick : MonoBehaviour {
             ref vts, ref colors, ref opaqueTris, ref transparentTris, optimizeStud, maxStudCnt);
 
         Mesh mesh = new Mesh();
-
         mesh.vertices = vts.ToArray();
         mesh.colors32 = colors.ToArray();
 
-        if (opaqueTris.Count > 0)
+        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
+        if (opaqueTris.Count > 0 && transparentTris.Count == 0)
         {
             mesh.SetTriangles(opaqueTris.ToArray(), 0);
-            if (transparentTris.Count > 0)
-            {
-                mesh.subMeshCount = 2;
-                mesh.SetTriangles(transparentTris.ToArray(), 1);
 
-                MeshRenderer renderer = GetComponent<MeshRenderer>();
-                if (renderer != null)
-                {
-                    Material defaultMat = renderer.material;
-
-                    Material[] customeMaterial = new Material[2];
-                    customeMaterial[0] = defaultMat;
-                    customeMaterial[1] = BrickMaterial.Instance.GetMaterial(BrickMaterial.BrickMaterialType.Transparent);
-                    renderer.materials = customeMaterial;
-                }
-            }
+            if (!brickMesh.bfcEnabled)
+                ChangeMaterial(BrickMaterial.MatType.Opaque, matIndexOffset, 1);
         }
-        else
+        else if (opaqueTris.Count == 0 && transparentTris.Count > 0)
         {
-            if (transparentTris.Count > 0)
-            {
-                Material customeMaterial = BrickMaterial.Instance.GetMaterial(BrickMaterial.BrickMaterialType.Transparent);
-                MeshRenderer renderer = GetComponent<MeshRenderer>();
-                if (renderer != null)
-                    renderer.material = customeMaterial;
+            mesh.SetTriangles(transparentTris.ToArray(), 0);
 
-                mesh.SetTriangles(transparentTris.ToArray(), 0);
-            }
+            ChangeMaterial(BrickMaterial.MatType.Transparent, matIndexOffset, 1);
         }
-        
+        else if (opaqueTris.Count > 0 && transparentTris.Count > 0)
+        {
+            mesh.subMeshCount = 2;
+            mesh.SetTriangles(opaqueTris.ToArray(), 0);
+            mesh.SetTriangles(transparentTris.ToArray(), 1);
+
+            ChangeMaterial(BrickMaterial.MatType.Opaque, matIndexOffset, 2);
+        }
+
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
-
         GetComponent<MeshFilter>().mesh = mesh;
 
         if (enableCollider)

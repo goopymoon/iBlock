@@ -11,6 +11,7 @@ public class BrickMesh
     private const int VERTEX_CNT_LIMTI_PER_MESH = 65000;
 
     public string name { get; set; }
+    public bool bfcEnabled { get; set; }
     public bool invertNext { get; set; }
     public short brickColor { get; private set; }
 
@@ -22,19 +23,16 @@ public class BrickMesh
     private Matrix4x4 localTr;
     private BrickMesh studMesh = null;
 
-    enum BrickTransparency : byte {
-        Opaque, Transparent, Mixed
-    };
-
     public string brickInfo()
     {
-        return string.Format("{0}: {1}", brickColor.ToString(), name);
+        return string.Format("{0}:{1}: {2}", bfcEnabled, brickColor.ToString(), name);
     }
 
     public BrickMesh(string meshName)
     {
         name = meshName;
 
+        bfcEnabled = false;
         invertNext = false;
         brickColor = LdConstant.LD_COLOR_MAIN;
         localTr = Matrix4x4.identity;
@@ -49,6 +47,7 @@ public class BrickMesh
     {
         name = rhs.name;
 
+        bfcEnabled = rhs.bfcEnabled;
         invertNext = rhs.invertNext;
         brickColor = rhs.brickColor;
         localTr = rhs.localTr;

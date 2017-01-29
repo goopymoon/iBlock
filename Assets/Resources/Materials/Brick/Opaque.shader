@@ -6,7 +6,7 @@
         LOD 200
 
         CGPROGRAM
-        #pragma surface surf_opaque Lambert vertex:vert fullforwardshadows
+        #pragma surface surf_opaque Lambert vertex:vert 
         #include "brickVC.cginc"
         ENDCG
     }
