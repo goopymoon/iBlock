@@ -26,14 +26,6 @@ public class Brick : MonoBehaviour {
         transform.localScale = localScale;
     }
 
-    private void AddCollider()
-    {
-        var renderer = GetComponent<Renderer>();
-        BoxCollider BC = renderer.gameObject.AddComponent<BoxCollider>();
-        BC.center = renderer.bounds.center;
-        BC.size = renderer.bounds.size;
-    }
-
     private void ChangeMaterial(BrickMaterial.MatType matType, int matIndexOffset, int matCnt)
     {
         MeshRenderer renderer = GetComponent<MeshRenderer>();
@@ -94,20 +86,7 @@ public class Brick : MonoBehaviour {
         GetComponent<MeshFilter>().mesh = mesh;
 
         if (enableCollider)
-            AddCollider();
-    }
-
-    void DebugNormal()
-    {
-        Mesh mesh = GetComponent<MeshFilter>().mesh;
-        int normalLength = 2;
-
-        for (int i = 0; i < mesh.vertices.Length; i++)
-        {
-            Vector3 norm = transform.TransformDirection(mesh.normals[i]);
-            Vector3 vert = transform.TransformPoint(mesh.vertices[i]);
-            Debug.DrawRay(vert, norm * normalLength, Color.red);
-        }
+            GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
     }
 
     // Use this for initialization
@@ -117,6 +96,5 @@ public class Brick : MonoBehaviour {
 	
     // Update is called once per frame
     void Update () {
-        //DebugNormal();
     }
 }

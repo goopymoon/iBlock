@@ -6,15 +6,14 @@ using System.Collections.Generic;
 public class BoundBoxes_BoundBox : MonoBehaviour
 {	
 	public bool colliderBased = false;
-    public bool drawFlag = false;
     public Color lineColor = new Color(0f, 1f, 0.4f, 0.74f);
 
-    public bool isInitialized = false;
-	private Bounds bound;
+    private bool drawFlag = false;
+    private bool isInitialized = false;
 
+    private Bounds bound;
 	private Vector3[] corners;
 	private Vector3[,] lines;
-	
 	private Quaternion quat;
 	
 	private Camera mcamera;	
@@ -32,95 +31,82 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	private Vector3 bottomBackLeft;
 	private Vector3 bottomBackRight;
 	
-    public void PrepareBounds()
+    public bool PrepareBounds()
     {
         if (isInitialized)
-            return;
+            return true;
 
-        CalculateBounds();
+        if (!CalculateBounds())
+            return false;
+
         SetPoints();
         SetLines();
 
         isInitialized = true;
+
+        return true;
     }
 
-    void CalculateBounds()
+    bool CalculateBounds()
     {
-        //object axis AABB
-        quat = transform.rotation;
+        quat = Quaternion.Euler(0f, 0f, 0f);
+        if (colliderBased)
+        {
+            BoxCollider coll = GetComponent<BoxCollider>();
+            if (!coll || coll.bounds.extents == Vector3.zero)
+                return false;
 
-        //world axis
-		if(renderers[0].isPartOfStaticBatch)
-            quat = Quaternion.Euler(0f,0f,0f);
-		
-		if(colliderBased)
-        {
-			BoxCollider coll = GetComponent<BoxCollider>();
-			if(coll)
-            {
-                GameObject co = new GameObject("dummy");
-                co.transform.position = transform.position;
-                co.transform.localScale = transform.lossyScale;
-                BoxCollider cobc = co.AddComponent<BoxCollider>();
-                quat = transform.rotation;
-                cobc.center = coll.center;
-                cobc.size = coll.size;
-				bound = cobc.bounds;
-                Destroy(co);
-			}
-            else
-            {
-				Debug.Log("No collider attached");
-			}
-			return;
-		}
-		bound = new Bounds();
+            bound = coll.bounds;
+            return true;
+        }
 		if(renderers[0].isPartOfStaticBatch)
         {
-			bound = renderers[0].bounds;
+            bound = renderers[0].bounds;
 			for(int i = 1; i < renderers.Length; i++)
             {
 				bound.Encapsulate(renderers[i].bounds);
 			}
-			return;
-		}
-		transform.rotation = Quaternion.Euler(0f,0f,0f);
-		for(int i = 0; i < meshes.Length; i++)
+
+			return (bound.extents != Vector3.zero);
+        }
+
+        quat = transform.rotation;
+        transform.rotation = Quaternion.Euler(0f,0f,0f);
+        for (int i = 0; i < meshes.Length; i++)
         {
-			Mesh ms = meshes[i].mesh;
-			Vector3 tr = meshes[i].gameObject.transform.position;
-			Vector3 ls = meshes[i].gameObject.transform.lossyScale;
-			Quaternion lr = meshes[i].gameObject.transform.rotation;
-			int vc = ms.vertexCount;
-			for(int j = 0; j < vc; j++)
-            {
-				if(i==0 && j==0)
-					bound = new Bounds(tr + lr*Vector3.Scale(ls, ms.vertices[j]), Vector3.zero);
-                else
-					bound.Encapsulate(tr + lr*Vector3.Scale(ls, ms.vertices[j]));
-			}
-		}
-		transform.rotation = quat;
+            Bounds localBound = meshes[i].mesh.bounds;
+            Vector3 ls = meshes[i].gameObject.transform.lossyScale;
+            var center = meshes[i].gameObject.transform.TransformPoint(localBound.center);
+            var size = meshes[i].gameObject.transform.TransformDirection(Vector3.Scale(ls, localBound.size));
+            Bounds temp = new Bounds(center, size);
+            if (i == 0)
+                bound = temp;
+            else
+                bound.Encapsulate(temp);
+        }
+        transform.rotation = quat;
+
+        return true;
 	}
-	
-	void SetPoints()
+
+    void SetPoints()
     {
-		Vector3 bc = transform.position + quat *(bound.center - transform.position);
+        Vector3 bc = transform.position + quat * (bound.center - transform.position);
 
-		topFrontRight = bc +  quat *Vector3.Scale(bound.extents, new Vector3(1, 1, 1)); 
-		topFrontLeft = bc +  quat *Vector3.Scale(bound.extents, new Vector3(-1, 1, 1)); 
-		topBackLeft = bc +  quat *Vector3.Scale(bound.extents, new Vector3(-1, 1, -1));
-		topBackRight = bc +  quat *Vector3.Scale(bound.extents, new Vector3(1, 1, -1)); 
-		bottomFrontRight = bc +  quat *Vector3.Scale(bound.extents, new Vector3(1, -1, 1)); 
-		bottomFrontLeft = bc +  quat *Vector3.Scale(bound.extents, new Vector3(-1, -1, 1)); 
-		bottomBackLeft = bc +  quat *Vector3.Scale(bound.extents, new Vector3(-1, -1, -1));
-		bottomBackRight = bc +  quat *Vector3.Scale(bound.extents, new Vector3(1, -1, -1)); 
+        topFrontRight = bc + quat * Vector3.Scale(bound.extents, new Vector3(1, 1, 1));
+        topFrontLeft = bc + quat * Vector3.Scale(bound.extents, new Vector3(-1, 1, 1));
+        topBackLeft = bc + quat * Vector3.Scale(bound.extents, new Vector3(-1, 1, -1));
+        topBackRight = bc + quat * Vector3.Scale(bound.extents, new Vector3(1, 1, -1));
+        bottomFrontRight = bc + quat * Vector3.Scale(bound.extents, new Vector3(1, -1, 1));
+        bottomFrontLeft = bc + quat * Vector3.Scale(bound.extents, new Vector3(-1, -1, 1));
+        bottomBackLeft = bc + quat * Vector3.Scale(bound.extents, new Vector3(-1, -1, -1));
+        bottomBackRight = bc + quat * Vector3.Scale(bound.extents, new Vector3(1, -1, -1));
 
-		corners = new Vector3[] { topFrontRight, topFrontLeft, topBackLeft, topBackRight,
-            bottomFrontRight, bottomFrontLeft, bottomBackLeft, bottomBackRight};	
-	}
-	
-	void SetLines()
+        corners = new Vector3[] { topFrontRight, topFrontLeft, topBackLeft, topBackRight,
+               bottomFrontRight, bottomFrontLeft, bottomBackLeft, bottomBackRight};
+    }
+
+    void SetLines()
     {	
 		int i1;
 		int linesCount = 12;
@@ -148,16 +134,26 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         meshes = GetComponentsInChildren<MeshFilter>();
     }
 
+    void DrawBoundBoxes(bool turnedOn)
+    {
+        if (turnedOn)
+        {
+            if (PrepareBounds())
+                cameralines.SetOutlines(lines, lineColor);
+        }
+        else
+        {
+            cameralines.ClearOutlines();
+            isInitialized = false;
+        }
+    }
+
     void Start()
     {
         mcamera = Camera.main;
         cameralines = mcamera.GetComponent<BoundBoxes_drawLines>();
 
-        if (drawFlag)
-        {
-            PrepareBounds();
-            cameralines.SetOutlines(lines, lineColor);
-        }
+        DrawBoundBoxes(drawFlag);
     }
 
     void Update()
@@ -165,15 +161,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.B))
         {
             drawFlag = !drawFlag;
-            if (drawFlag)
-            {
-                PrepareBounds();
-                cameralines.SetOutlines(lines, lineColor);
-            }
-            else
-            {
-                cameralines.ClearOutlines();
-            }
+            DrawBoundBoxes(drawFlag);
         }
     }
 }
