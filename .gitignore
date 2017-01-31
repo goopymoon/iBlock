@@ -1,11 +1,13 @@
-# Skip LDraw parts and model directory
-# =============== #
+# ==================================== #
+# Skip LDraw parts and model directory #
+# ==================================== #
 LdParts
 Bricks
 
-#For Mac developers
-# Unity generated #
-# =============== #
+# ================== #
+# For Mac developers #
+# Unity generated    #
+# ================== #
 Temp/
 obj/
 Build
@@ -46,3 +48,9 @@ Build/android
 Icon?
 ehthumbs.db
 Thumbs.db
+
+# ============== #
+# Screen capture #
+# ============== #
+iblock_screenshot.png
+
