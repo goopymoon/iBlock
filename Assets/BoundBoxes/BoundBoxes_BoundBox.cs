@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public class BoundBoxes_BoundBox : MonoBehaviour
 {	
 	public bool colliderBased = false;
+    public bool showGroup = false;
     public Color lineColor = new Color(0f, 1f, 0.4f, 0.74f);
 
     private bool drawFlag = false;
@@ -18,10 +19,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	
 	private Camera mcamera;	
 	private BoundBoxes_drawLines cameralines;
-	
-	private Renderer[] renderers;
-	private MeshFilter[] meshes;
-	
+
 	private Vector3 topFrontLeft;
 	private Vector3 topFrontRight;
 	private Vector3 topBackLeft;
@@ -31,7 +29,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	private Vector3 bottomBackLeft;
 	private Vector3 bottomBackRight;
 	
-    public bool PrepareBounds()
+    private bool PrepareBounds()
     {
         if (isInitialized)
             return true;
@@ -47,32 +45,52 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         return true;
     }
 
-    bool CalculateBounds()
+    private bool CalculateBoundsFromBoxColliders()
     {
         quat = Quaternion.Euler(0f, 0f, 0f);
-        if (colliderBased)
-        {
-            BoxCollider coll = GetComponent<BoxCollider>();
-            if (!coll || coll.bounds.extents == Vector3.zero)
-                return false;
 
-            bound = coll.bounds;
-            return true;
+        BoxCollider[] colliders = GetComponentsInChildren<BoxCollider>();
+        int showLen = showGroup ? colliders.Length : 1;
+
+        for (int i = 0; i < showLen; ++i)
+        {
+            if (i == 0)
+                bound = colliders[i].bounds;
+            else
+                bound.Encapsulate(colliders[i].bounds);
         }
-		if(renderers[0].isPartOfStaticBatch)
+
+        return (bound.extents != Vector3.zero);
+    }
+
+    private bool CalculateBoundsFromStaticBatch()
+    {
+        quat = Quaternion.Euler(0f, 0f, 0f);
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        int showLen = showGroup ? renderers.Length : 1;
+
+        if (renderers[0].isPartOfStaticBatch)
         {
             bound = renderers[0].bounds;
-			for(int i = 1; i < renderers.Length; i++)
-            {
-				bound.Encapsulate(renderers[i].bounds);
-			}
+            for (int i = 1; i < showLen; i++)
+                bound.Encapsulate(renderers[i].bounds);
 
-			return (bound.extents != Vector3.zero);
+            return (bound.extents != Vector3.zero);
         }
 
+        return false;
+    }
+
+    private bool CalculateBoundsFromMeshBound()
+    {
         quat = transform.rotation;
-        transform.rotation = Quaternion.Euler(0f,0f,0f);
-        for (int i = 0; i < meshes.Length; i++)
+
+        MeshFilter[] meshes = GetComponentsInChildren<MeshFilter>();
+        int showLen = showGroup ? meshes.Length : 1;
+
+        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        for (int i = 0; i < showLen; i++)
         {
             Bounds localBound = meshes[i].mesh.bounds;
             Vector3 ls = meshes[i].gameObject.transform.lossyScale;
@@ -84,12 +102,24 @@ public class BoundBoxes_BoundBox : MonoBehaviour
             else
                 bound.Encapsulate(temp);
         }
+
         transform.rotation = quat;
 
         return true;
-	}
+    }
 
-    void SetPoints()
+    private bool CalculateBounds()
+    {
+        if (colliderBased && CalculateBoundsFromBoxColliders())
+            return true;
+
+        if (CalculateBoundsFromStaticBatch())
+            return true;
+
+        return CalculateBoundsFromMeshBound();
+    }
+
+    private void SetPoints()
     {
         Vector3 bc = transform.position + quat * (bound.center - transform.position);
 
@@ -106,7 +136,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
                bottomFrontRight, bottomFrontLeft, bottomBackLeft, bottomBackRight};
     }
 
-    void SetLines()
+    private void SetLines()
     {	
 		int i1;
 		int linesCount = 12;
@@ -128,13 +158,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 		}
 	}
 
-    void Awake()
-    {
-        renderers = GetComponentsInChildren<Renderer>();
-        meshes = GetComponentsInChildren<MeshFilter>();
-    }
-
-    void DrawBoundBoxes(bool turnedOn)
+    private void DrawBoundBoxes(bool turnedOn)
     {
         if (turnedOn)
         {
@@ -152,8 +176,6 @@ public class BoundBoxes_BoundBox : MonoBehaviour
     {
         mcamera = Camera.main;
         cameralines = mcamera.GetComponent<BoundBoxes_drawLines>();
-
-        DrawBoundBoxes(drawFlag);
     }
 
     void Update()

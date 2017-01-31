@@ -4,10 +4,8 @@ using System.Collections.Generic;
 
 using System;
 
-public class Brick : MonoBehaviour {
-
-    public bool enableCollider = false;
-
+public class Brick : MonoBehaviour
+{
     public void SetParent(Transform parent)
     {
         transform.SetParent(parent, false);
@@ -50,15 +48,15 @@ public class Brick : MonoBehaviour {
         List<Color32> colors = new List<Color32>();
         List<int> opaqueTris = new List<int>();
         List<int> transparentTris = new List<int>();
+        Mesh mesh = new Mesh();
+        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
         brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext,
             ref vts, ref colors, ref opaqueTris, ref transparentTris, optimizeStud, maxStudCnt);
 
-        Mesh mesh = new Mesh();
         mesh.vertices = vts.ToArray();
         mesh.colors32 = colors.ToArray();
 
-        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
         if (opaqueTris.Count > 0 && transparentTris.Count == 0)
         {
             mesh.SetTriangles(opaqueTris.ToArray(), 0);
@@ -83,10 +81,9 @@ public class Brick : MonoBehaviour {
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
-        GetComponent<MeshFilter>().mesh = mesh;
 
-        if (enableCollider)
-            GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
+        GetComponent<MeshFilter>().mesh = mesh;
+        GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
     }
 
     // Use this for initialization

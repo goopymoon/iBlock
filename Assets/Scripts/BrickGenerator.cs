@@ -7,8 +7,7 @@ using System;
 public class BrickGenerator : MonoBehaviour
 {
     public GameObject brickPrefab;
-
-    private const int MAX_STUD_CNT_PER_MESH = 6;
+    public int MAX_STUD_CNT = 6;
 
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
@@ -29,9 +28,39 @@ public class BrickGenerator : MonoBehaviour
         return go;
     }
 
+    private void SnapToTerrain(GameObject go)
+    {
+        Bounds aabb = new Bounds();
+        var renderers = GetComponentsInChildren<Renderer>();
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Bounds localBound = renderers[i].bounds;
+            if (i == 0)
+                aabb = renderers[i].bounds;
+            else
+                aabb.Encapsulate(renderers[i].bounds);
+        }
+
+        var groundPlane = GameObject.Find("GroundPlane");
+        var collider = groundPlane.GetComponent<Collider>();
+        if (collider)
+        {
+            RaycastHit hit;
+            Ray ray = new Ray(aabb.center, -transform.up);
+            if (collider.Raycast(ray, out hit, Mathf.Infinity))
+            {
+                float rayDistance = aabb.center.y - hit.point.y;
+                Vector3 shift = transform.up * (aabb.extents.y - rayDistance);
+                transform.Translate(shift);
+            }
+        }
+    }
+
     GameObject LoadModel()
     {
         LdModelLoader modelLoader = new LdModelLoader();
+        bool optimizeStud = true;
 
         //var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
@@ -45,8 +74,7 @@ public class BrickGenerator : MonoBehaviour
             return null;
         }
 
-        bool optimizeStud = true;
-        return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT_PER_MESH);
+        return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT);
     }
 
     private void Awake()
@@ -58,7 +86,8 @@ public class BrickGenerator : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
-        LoadModel();
+        var go = LoadModel();
+        SnapToTerrain(go);
     }
 
     // Update is called once per frame
