@@ -6,6 +6,7 @@ using System;
 
 public class BrickGenerator : MonoBehaviour
 {
+    public GameObject terrainMesh;
     public GameObject brickPrefab;
     public int MAX_STUD_CNT = 6;
 
@@ -28,22 +29,20 @@ public class BrickGenerator : MonoBehaviour
         return go;
     }
 
+    void InitCameraZoomRange(GameObject go)
+    {
+        Bounds aabb = go.GetComponent<Brick>().AABB;
+        var mCameraController = Camera.main.GetComponent<BoundBoxes_maxCamera>();
+
+        mCameraController.minDistance = Math.Max(aabb.extents.magnitude / 10, 1);
+        mCameraController.maxDistance = Math.Max(aabb.extents.magnitude * 2, 5);
+    }
+
     private void SnapToTerrain(GameObject go)
     {
-        Bounds aabb = new Bounds();
-        var renderers = GetComponentsInChildren<Renderer>();
+        Bounds aabb = go.GetComponent<Brick>().AABB;
+        var collider = terrainMesh.GetComponent<Collider>();
 
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Bounds localBound = renderers[i].bounds;
-            if (i == 0)
-                aabb = renderers[i].bounds;
-            else
-                aabb.Encapsulate(renderers[i].bounds);
-        }
-
-        var groundPlane = GameObject.Find("GroundPlane");
-        var collider = groundPlane.GetComponent<Collider>();
         if (collider)
         {
             RaycastHit hit;
@@ -77,7 +76,7 @@ public class BrickGenerator : MonoBehaviour
         return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT);
     }
 
-    private void Awake()
+    void Awake()
     {
         LdColorTable.Instance.Initialize();
         BrickMaterial.Instance.Initialize();
@@ -87,6 +86,8 @@ public class BrickGenerator : MonoBehaviour
     void Start ()
     {
         var go = LoadModel();
+
+        InitCameraZoomRange(go);
         SnapToTerrain(go);
     }
 

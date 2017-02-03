@@ -176,6 +176,8 @@ public class BoundBoxes_BoundBox : MonoBehaviour
     {
         mcamera = Camera.main;
         cameralines = mcamera.GetComponent<BoundBoxes_drawLines>();
+
+        PrepareBounds();
     }
 
     void Update()

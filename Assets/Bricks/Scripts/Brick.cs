@@ -6,6 +6,24 @@ using System;
 
 public class Brick : MonoBehaviour
 {
+    class BoundCache
+    {
+        public Bounds aabb;
+    }
+    BoundCache boundCache = null;
+    public Bounds AABB
+    {
+        get
+        {
+            if (boundCache == null)
+            {
+                boundCache = new BoundCache();
+                boundCache.aabb = CalBounds();
+            }
+            return boundCache.aabb;
+        }
+    }
+
     public void SetParent(Transform parent)
     {
         transform.SetParent(parent, false);
@@ -86,9 +104,25 @@ public class Brick : MonoBehaviour
         GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
     }
 
+    public Bounds CalBounds()
+    {
+        Bounds aabb = new Bounds();
+        var renderers = GetComponentsInChildren<Renderer>();
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Bounds localBound = renderers[i].bounds;
+            if (i == 0)
+                aabb = renderers[i].bounds;
+            else
+                aabb.Encapsulate(renderers[i].bounds);
+        }
+
+        return aabb;
+    }
+
     // Use this for initialization
     void Start () {
-
     }
 	
     // Update is called once per frame

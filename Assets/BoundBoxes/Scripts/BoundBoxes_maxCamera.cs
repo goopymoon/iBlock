@@ -8,17 +8,20 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 	public GameObject terrainMesh;
     public Vector3 targetOffset;
     public float distance = 5.0f;
-    public float maxDistance = 20;
-    public float minDistance = .6f;
-    public float xSpeed = 200.0f;
-    public float ySpeed = 200.0f;
     public float aboveYmin = 0.8f;
-    public float yMaxLimit = 80f;
-    public float zoomRate = 10;
-    public float panSpeed = 5;
+    public float yMaxLimit = 80.0f;
+    public float zoomRate = 1.0f;
+    public float panSpeed = 5.0f;
     public float rotDampening = 5.0f;
-    public float zoomDampening = 1.0f;
- 
+    public float zoomDampening = 0.2f;
+
+    [System.ComponentModel.DefaultValue(20f)]
+    public float maxDistance { get; set; }
+    [System.ComponentModel.DefaultValue(1f)]
+    public float minDistance { get; set; }
+
+    private float xSpeed = 4.0f;
+    private float ySpeed = 4.0f;
     private float xDeg = 0.0f;
     private float yDeg = 0.0f;
     private float currentDistance;
@@ -32,7 +35,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 	private Vector2 currentInputPosition;
 	private Vector3 hitPoint = Vector3.zero;
 	private bool dragging = false;
- 
+
     void Start() { Init(); }
     void OnEnable() { Init(); }
  
@@ -63,16 +66,12 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 		if (transform.position.y < target.position.y) yDeg *= -1;
     }
 
-    /*
-     * Camera logic on LateUpdate to only update after all character movement logic has been handled. 
-     */
     void LateUpdate()
     {
-        // If right mouse then ORBIT
         if (Input.GetMouseButton(1))
         {
-            xDeg += Input.GetAxis("Mouse X") * xSpeed * 0.02f;
-            yDeg -= Input.GetAxis("Mouse Y") * ySpeed * 0.02f;
+            xDeg += Input.GetAxis("Mouse X") * xSpeed;
+            yDeg -= Input.GetAxis("Mouse Y") * ySpeed;
 
             //Clamp the vertical axis for the orbit
             yMinLimit = -Mathf.Rad2Deg * Mathf.Asin((target.position.y - viewerYmin) / currentDistance);
@@ -82,8 +81,10 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             desiredRotation = Quaternion.Euler(yDeg, xDeg, 0);
             rotation = Quaternion.Lerp(transform.rotation, desiredRotation, Time.deltaTime * rotDampening);
             transform.rotation = rotation;
+
+            position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
+            transform.position = position;
         }
-        // otherwise if left mouse we pan by way of moving the target over the terrain
         else if (Input.GetMouseButton(0))
         {
             desiredInputPosition = Input.mousePosition;
@@ -95,7 +96,6 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             if (hits.Length == 0) return;
 
             bool prevDrag = dragging;
-
             dragging = false;
             foreach (RaycastHit hit in hits)
             {
@@ -106,7 +106,6 @@ public class BoundBoxes_maxCamera : MonoBehaviour
                     break;
                 }
             }
-
             if (!prevDrag && dragging)
                 StartCoroutine("DragObject", hitPoint);
 
@@ -118,19 +117,13 @@ public class BoundBoxes_maxCamera : MonoBehaviour
         if (scrollVal != 0.0f)
         {
             // affect the desired Zoom distance if we roll the scrollwheel
-            desiredDistance -= scrollVal * Time.deltaTime * zoomRate * desiredDistance * Mathf.Log(1 + Mathf.Abs(desiredDistance));
-            //clamp the zoom min/max
-            desiredDistance = Mathf.Clamp(desiredDistance, minDistance, maxDistance);
-
-            // For smoothing of the zoom, lerp distance
-            currentDistance = Mathf.Lerp(currentDistance, desiredDistance, Time.deltaTime * zoomDampening);
-
-            position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
-            transform.position = position;
+            var delta = scrollVal * zoomRate * Mathf.Abs(desiredDistance);
+            desiredDistance = Mathf.Clamp(desiredDistance - delta, minDistance, maxDistance);
         }
-        else
+        if (currentDistance != desiredDistance)
         {
-            desiredDistance = currentDistance;
+            currentDistance = Mathf.Lerp(currentDistance, desiredDistance, zoomDampening);
+
             position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
             transform.position = position;
         }
@@ -142,6 +135,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             angle += 360;
         if (angle > 360)
             angle -= 360;
+
         return Mathf.Clamp(angle, min, max);
     }
 	
