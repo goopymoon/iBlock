@@ -14,9 +14,10 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     public float ySpeed = 200.0f;
     public float aboveYmin = 0.8f;
     public float yMaxLimit = 80f;
-    public float zoomRate = 40;
-    public float panSpeed = 0.3f;
-    public float zoomDampening = 5.0f;
+    public float zoomRate = 10;
+    public float panSpeed = 5;
+    public float rotDampening = 5.0f;
+    public float zoomDampening = 1.0f;
  
     private float xDeg = 0.0f;
     private float yDeg = 0.0f;
@@ -79,7 +80,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
             // set camera rotation 
             desiredRotation = Quaternion.Euler(yDeg, xDeg, 0);
-            rotation = Quaternion.Lerp(transform.rotation, desiredRotation, Time.deltaTime * zoomDampening);
+            rotation = Quaternion.Lerp(transform.rotation, desiredRotation, Time.deltaTime * rotDampening);
             transform.rotation = rotation;
         }
         // otherwise if left mouse we pan by way of moving the target over the terrain
@@ -91,7 +92,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
             RaycastHit[] hits;
             hits = Physics.RaycastAll(GetComponent<Camera>().ScreenPointToRay(currentInputPosition), 100);
-            //if(hits.Length == 0) return;
+            if (hits.Length == 0) return;
 
             bool prevDrag = dragging;
 
@@ -110,19 +111,26 @@ public class BoundBoxes_maxCamera : MonoBehaviour
                 StartCoroutine("DragObject", hitPoint);
 
             // calculate position based on the new currentDistance 	
-            currentInputPosition = Vector2.Lerp(currentInputPosition, desiredInputPosition, Time.deltaTime * 5f);
+            currentInputPosition = Vector2.Lerp(currentInputPosition, desiredInputPosition, Time.deltaTime * panSpeed);
         }
 
         var scrollVal = Input.GetAxis("Mouse ScrollWheel");
         if (scrollVal != 0.0f)
         {
             // affect the desired Zoom distance if we roll the scrollwheel
-            desiredDistance -= scrollVal * Time.deltaTime * zoomRate * Mathf.Abs(desiredDistance);
+            desiredDistance -= scrollVal * Time.deltaTime * zoomRate * desiredDistance * Mathf.Log(1 + Mathf.Abs(desiredDistance));
             //clamp the zoom min/max
             desiredDistance = Mathf.Clamp(desiredDistance, minDistance, maxDistance);
+
             // For smoothing of the zoom, lerp distance
             currentDistance = Mathf.Lerp(currentDistance, desiredDistance, Time.deltaTime * zoomDampening);
 
+            position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
+            transform.position = position;
+        }
+        else
+        {
+            desiredDistance = currentDistance;
             position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
             transform.position = position;
         }
@@ -143,14 +151,17 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
 	IEnumerator DragObject (Vector3 startingHit)
     {
-		while (Input.GetMouseButton(0) && dragging)
+        float dragSpeed = Time.deltaTime * panSpeed;
+
+        while (Input.GetMouseButton(0) && dragging)
 		{	
 			var translation = startingHit - hitPoint;
-			translation.x = Mathf.Clamp(translation.x, -0.1f, 0.1f);
-			translation.z = Mathf.Clamp(translation.z, -0.1f, 0.1f);
 
-			transform.position = transform.position + translation;
-			target.position = target.position + translation;
+            translation.x = Mathf.Clamp(translation.x, -dragSpeed, dragSpeed);
+            translation.z = Mathf.Clamp(translation.z, -dragSpeed, dragSpeed);
+
+            transform.position = transform.position + translation;
+            target.position = target.position + translation;
 
 			yield return null;
 		}
