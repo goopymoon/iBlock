@@ -8,6 +8,7 @@ public class BrickGenerator : MonoBehaviour
 {
     public GameObject terrainMesh;
     public GameObject brickPrefab;
+    public bool optimizeStud = true;
     public int MAX_STUD_CNT = 6;
 
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
@@ -56,18 +57,28 @@ public class BrickGenerator : MonoBehaviour
         }
     }
 
+    void Awake()
+    {
+        BrickMaterial.Instance.Initialize();
+        LdColorTable.Instance.Initialize();
+    }
+
     GameObject LoadModel()
     {
-        LdModelLoader modelLoader = new LdModelLoader();
-        bool optimizeStud = true;
-
-        //var fileName = @"Creator/4349 - Bird.mpd";
+        var fileName = @"Creator/4349 - Bird.mpd";
         //var fileName = @"Modular buildings/10182 - Cafe Corner.mpd";
         //var fileName = @"Friends/3931 - Emma's Splash Pool.mpd";
-        var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
+        //var fileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
 
-        BrickMesh brickMesh = new BrickMesh(fileName);
-        if (!modelLoader.Load(fileName, ref brickMesh))
+        LdModelLoader modelLoader = new LdModelLoader();
+        if (!modelLoader.Initialize())
+        {
+            Debug.Log(string.Format("Cannot initailize LdMoelLoader."));
+            return null;
+        }
+
+        BrickMesh brickMesh = modelLoader.Load(fileName);
+        if (brickMesh == null)
         {
             Debug.Log(string.Format("Cannot parse: {0}", fileName));
             return null;
@@ -76,23 +87,20 @@ public class BrickGenerator : MonoBehaviour
         return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT);
     }
 
-    void Awake()
-    {
-        LdColorTable.Instance.Initialize();
-        BrickMaterial.Instance.Initialize();
-    }
-
     // Use this for initialization
     void Start ()
     {
         var go = LoadModel();
 
-        InitCameraZoomRange(go);
-        SnapToTerrain(go);
+        if (go != null)
+        {
+            InitCameraZoomRange(go);
+            SnapToTerrain(go);
+        }
     }
 
     // Update is called once per frame
-    void Update ()
+    void Update()
     {
     }
 }

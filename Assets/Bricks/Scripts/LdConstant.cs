@@ -19,8 +19,6 @@
     public const short LD_COLOR_EDGE = 24;
 
     public const string TAG_MPD_FILE_EXT = ".mpd";
-    public const string TAG_LDR_FILE_EXT = ".ldr";
-    public const string TAG_DAT_FILE_EXT = ".dat";
 
     static public short GetEffectiveColorIndex(short localColor, short parentColor)
     {
