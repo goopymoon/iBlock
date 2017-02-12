@@ -12,13 +12,13 @@ public class LdModelLoader
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding   { CCW = 0, CW };
 
-    private Dictionary<string, Tuple<string, bool, bool>> pathCache;
+    private Dictionary<string, Tuple<string, bool>> pathCache;
     private Dictionary<string, List<string>> ldrCache;
     private Dictionary<string, BrickMesh> brickCache;
 
     public LdModelLoader()
     {
-        pathCache = new Dictionary<string, Tuple<string, bool, bool>>();
+        pathCache = new Dictionary<string, Tuple<string, bool>>();
         ldrCache = new Dictionary<string, List<string>>();
         brickCache = new Dictionary<string, BrickMesh>();
     }
@@ -39,11 +39,10 @@ public class LdModelLoader
         for (int i = 0; i < readText.Length; ++i)
         {
             string[] words = readText[i].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length > 3)
+            if (words.Length == 3)
             {
                 bool isPart = Convert.ToBoolean(words[2]);
-                bool noSub = Convert.ToBoolean(words[3]);
-                pathCache.Add(words[0], Tuple.Create<string, bool, bool>(words[1], isPart, noSub));
+                pathCache.Add(words[0], Tuple.Create<string, bool>(words[1], isPart));
             }
         }
 
@@ -290,9 +289,11 @@ public class LdModelLoader
         return true;
     }
 
-    private bool ParseModel(string[] readText, ref BrickMesh brickMesh,
-        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
+    private BrickMesh ParseModel(string modelName, string[] readText, Matrix4x4 trMatrix, 
+        short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
     {
+        BrickMesh brickMesh = new BrickMesh(modelName);
+
         eCertified certified = eCertified.NA;
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
@@ -317,7 +318,7 @@ public class LdModelLoader
                     if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
                     {
                         Debug.Log(string.Format("ParseSubFileInfo failed: {0}", line));
-                        return false;
+                        return null;
                     }
                     invertNext = false;
                     break;
@@ -325,14 +326,14 @@ public class LdModelLoader
                     if (!ParseTriInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
                     {
                         Debug.Log(string.Format("ParseTriInfo failed: {0}", line));
-                        return false;
+                        return null;
                     }
                     break;
                 case 4:
                     if (!ParseQuadInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
                     {
                         Debug.Log(string.Format("ParseQuadInfo failed: {0}", line));
-                        return false;
+                        return null;
                     }
                     break;
                 default:
@@ -342,30 +343,21 @@ public class LdModelLoader
 
         brickMesh.bfcEnabled = certified == eCertified.TRUE;
 
-        return true;
+        return brickMesh;
     }
 
     private bool LoadModel(string fileName, ref BrickMesh parentMesh, 
         Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
     {
+        BrickMesh subBrickMesh = null;
         bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
 
-        Tuple<string, bool, bool> val;
+        Tuple<string, bool> val;
         if (pathCache.TryGetValue(fileName.ToLower(), out val))
         {
-            bool isPart = val.Item2;
-            bool noSub = val.Item3;
-
             if (brickCache.ContainsKey(fileName))
             {
-                BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
-
-                if ((isPart && noSub))
-                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-                else
-                    parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-
-                return true;
+                subBrickMesh = new BrickMesh(brickCache[fileName]);
             }
             else
             {
@@ -380,53 +372,44 @@ public class LdModelLoader
 
                 string[] readText = File.ReadAllLines(filePath);
 
-                BrickMesh subBrickMesh = new BrickMesh(fileName);
-                if (ParseModel(readText, ref subBrickMesh, Matrix4x4.identity))
-                {
-                    subBrickMesh.Optimize();
-                    brickCache[fileName] = new BrickMesh(subBrickMesh);
+                subBrickMesh = ParseModel(fileName, readText, Matrix4x4.identity);
+                if (subBrickMesh == null)
+                    return false;
 
-                    if ((isPart && noSub))
-                        parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-                    else
-                        parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-                }
-
-                return true;
+                subBrickMesh.Optimize();
+                brickCache[fileName] = new BrickMesh(subBrickMesh);
             }
+
+            if (val.Item2)
+                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+            else
+                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
+
+            return true;
         }
 
         if (ldrCache.ContainsKey(fileName))
         {
-            var subDirName = Path.GetDirectoryName(fileName);
-
             if (brickCache.ContainsKey(fileName))
             {
-                BrickMesh subBrickMesh = new BrickMesh(brickCache[fileName]);
-
-                if (subDirName.Length == 0)
-                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-                else
-                    parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-
-                return true;
+                subBrickMesh = new BrickMesh(brickCache[fileName]);
             }
             else
             {
-                BrickMesh subBrickMesh = new BrickMesh(fileName);
-                if (ParseModel(ldrCache[fileName].ToArray(), ref subBrickMesh, Matrix4x4.identity))
-                {
-                    subBrickMesh.Optimize();
-                    brickCache[fileName] = new BrickMesh(subBrickMesh);
+                subBrickMesh = ParseModel(fileName, ldrCache[fileName].ToArray(), Matrix4x4.identity);
+                if (subBrickMesh == null)
+                    return false;
 
-                    if (subDirName.Length == 0)
-                        parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-                    else
-                        parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-
-                    return true;
-                }
+                subBrickMesh.Optimize();
+                brickCache[fileName] = new BrickMesh(subBrickMesh);
             }
+
+            if (Path.GetDirectoryName(fileName).Length == 0)
+                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+            else
+                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
+
+            return true;
         }
 
         return false;

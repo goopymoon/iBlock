@@ -25,7 +25,6 @@ ExportedObj/
 *.app
 *.exe
 *.*_data
-*.meta
 
 Build/iOS
 Build/android
@@ -43,6 +42,7 @@ Build/android
 Icon?
 ehthumbs.db
 Thumbs.db
+*.meta
 
 # ============== #
 # Screen capture #
