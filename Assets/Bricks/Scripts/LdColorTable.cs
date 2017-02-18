@@ -22,7 +22,7 @@ public class LdColorTable : MonoBehaviour
                 if (_instance == null)
                 {
                     GameObject container = new GameObject();
-                    container.name = "LdColorTableContainer";
+                    container.name = "LdColorTable";
                     _instance = container.AddComponent(typeof(LdColorTable)) as LdColorTable;
                 }
             }

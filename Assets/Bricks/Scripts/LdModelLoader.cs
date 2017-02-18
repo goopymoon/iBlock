@@ -25,7 +25,6 @@ public class LdModelLoader
 
     public bool Initialize()
     { 
-        var ldPartsPath = Path.Combine(Application.streamingAssetsPath, "LdParts");
         var filePath = Path.Combine(Application.streamingAssetsPath, "partspath.lst");
 
         if (!File.Exists(filePath))

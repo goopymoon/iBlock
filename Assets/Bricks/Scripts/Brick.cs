@@ -24,6 +24,9 @@ public class Brick : MonoBehaviour
         }
     }
 
+    public GameObject prevBrick { get; set; }
+    public GameObject nextBrick { get; set; }
+
     public void SetParent(Transform parent)
     {
         transform.SetParent(parent, false);
@@ -55,12 +58,13 @@ public class Brick : MonoBehaviour
         renderer.sharedMaterials = customeMaterial;
     }
 
-    public void CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext, bool optimizeStud, int maxStudCnt)
+    public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, 
+        bool invertNext, bool optimizeStud, int maxStudCnt)
     {
         TransformModel(brickMesh);
 
         if (brickMesh.vertices.Count == 0)
-            return;
+            return false;
 
         List<Vector3> vts = new List<Vector3>();
         List<Color32> colors = new List<Color32>();
@@ -102,6 +106,8 @@ public class Brick : MonoBehaviour
 
         GetComponent<MeshFilter>().mesh = mesh;
         GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
+
+        return true;
     }
 
     public Bounds CalBounds()
@@ -119,6 +125,12 @@ public class Brick : MonoBehaviour
         }
 
         return aabb;
+    }
+
+    private void Awake()
+    {
+        prevBrick = null;
+        nextBrick = null;
     }
 
     // Use this for initialization

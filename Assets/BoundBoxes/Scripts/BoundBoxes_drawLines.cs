@@ -6,13 +6,37 @@ public class BoundBoxes_drawLines : MonoBehaviour
 {
 	public Material lineMaterial;
 
-    private List<Vector3[,]> outlines;
-	private List<Color> colors;
+    class OBBLines
+    {
+        public List<Vector3[,]> outlines;
+        public List<Color> colors;
+
+        public OBBLines()
+        {
+            outlines = new List<Vector3[,]>();
+            colors = new List<Color>();
+        }
+
+        public void ClearOut()
+        {
+            outlines.Clear();
+            colors.Clear();
+        }
+
+        public void SetOutlines(Vector3[,] newOutlines, Color newcolor)
+        {
+            if (newOutlines.GetLength(0) > 0)
+            {
+                outlines.Add(newOutlines);
+                colors.Add(newcolor);
+            }
+        }
+    }
+    private Dictionary<int, OBBLines> obbLines;
 
 	void Awake ()
     {
-		outlines = new List<Vector3[,]>();
-		colors = new List<Color>();
+        obbLines = new Dictionary<int, OBBLines>();
 	}
 	
 	void Start ()
@@ -21,40 +45,51 @@ public class BoundBoxes_drawLines : MonoBehaviour
 
 	void OnPostRender()
     {
-		if(outlines==null) return;
+		if(obbLines == null) return;
 
 	    lineMaterial.SetPass( 0 );
 	    GL.Begin( GL.LINES );
-		for (int j=0; j<outlines.Count; j++)
+
+        foreach (var element in obbLines)
         {
-			GL.Color(colors[j]);
-			for (int i=0; i<outlines[j].GetLength(0); i++)
+            for (int j = 0; j < element.Value.outlines.Count; j++)
             {
-				GL.Vertex(outlines[j][i,0]);
-				GL.Vertex(outlines[j][i,1]);
-			}
-		}
+                GL.Color(element.Value.colors[j]);
+                for (int i = 0; i < element.Value.outlines[j].GetLength(0); i++)
+                {
+                    GL.Vertex(element.Value.outlines[j][i, 0]);
+                    GL.Vertex(element.Value.outlines[j][i, 1]);
+                }
+            }
+        }
 		GL.End();
 	}
 
-    public void ClearOutlines()
+    public void ClearOutOBBLines()
     {
-        outlines.Clear();
-        colors.Clear();
-    }
-
-    public void SetOutlines(Vector3[,] newOutlines, Color newcolor)
-    {
-        if (newOutlines.GetLength(0) > 0)
+        foreach(var element in obbLines)
         {
-            outlines.Add(newOutlines);
-            //Debug.Log ("no "+newOutlines.GetLength(0).ToString());
-            colors.Add(newcolor);
+            element.Value.ClearOut();
         }
     }
 
-	// Update is called once per frame
-	void Update()
+    public void ClearOutOBBLines(int key)
+    {
+        obbLines.Remove(key);
+    }
+
+    public void SetOutlines(int key, Vector3[,] newOutlines, Color newcolor)
+    {
+        OBBLines temp;
+        if (!obbLines.TryGetValue(key, out temp))
+            temp = new OBBLines();
+
+        temp.SetOutlines(newOutlines, newcolor);
+        obbLines[key] = temp;
+    }
+
+    // Update is called once per frame
+    void Update()
     {
     }
 }

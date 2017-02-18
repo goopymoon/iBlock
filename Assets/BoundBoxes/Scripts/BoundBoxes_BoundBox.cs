@@ -6,11 +6,12 @@ using System.Collections.Generic;
 public class BoundBoxes_BoundBox : MonoBehaviour
 {	
 	public bool colliderBased = false;
-    public bool showGroup = false;
+    public bool showChildren = false;
     public Color lineColor = new Color(0f, 1f, 0.4f, 0.74f);
 
     private bool drawFlag = false;
     private bool isInitialized = false;
+    private bool isSelected = true;
 
     private Bounds bound;
 	private Vector3[] corners;
@@ -28,7 +29,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 	private Vector3 bottomFrontRight;
 	private Vector3 bottomBackLeft;
 	private Vector3 bottomBackRight;
-	
+
     private bool PrepareBounds()
     {
         if (isInitialized)
@@ -50,7 +51,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         quat = Quaternion.Euler(0f, 0f, 0f);
 
         BoxCollider[] colliders = GetComponentsInChildren<BoxCollider>();
-        int showLen = showGroup ? colliders.Length : 1;
+        int showLen = showChildren ? colliders.Length : 1;
 
         for (int i = 0; i < showLen; ++i)
         {
@@ -68,7 +69,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         quat = Quaternion.Euler(0f, 0f, 0f);
 
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        int showLen = showGroup ? renderers.Length : 1;
+        int showLen = showChildren ? renderers.Length : 1;
 
         if (renderers[0].isPartOfStaticBatch)
         {
@@ -87,7 +88,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         quat = transform.rotation;
 
         MeshFilter[] meshes = GetComponentsInChildren<MeshFilter>();
-        int showLen = showGroup ? meshes.Length : 1;
+        int showLen = showChildren ? meshes.Length : 1;
 
         transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         for (int i = 0; i < showLen; i++)
@@ -162,14 +163,32 @@ public class BoundBoxes_BoundBox : MonoBehaviour
     {
         if (turnedOn)
         {
-            if (PrepareBounds())
-                cameralines.SetOutlines(lines, lineColor);
+            if (isSelected && PrepareBounds())
+                cameralines.SetOutlines(GetInstanceID(), lines, lineColor);
         }
         else
         {
-            cameralines.ClearOutlines();
-            isInitialized = false;
+            if (!isSelected)
+            {
+                cameralines.ClearOutOBBLines(GetInstanceID());
+                isInitialized = false;
+            }
         }
+    }
+
+    public void SelectBound(bool flag)
+    {
+        isSelected = flag;
+
+        cameralines.ClearOutOBBLines(GetInstanceID());
+        isInitialized = false;
+
+        DrawBoundBoxes(flag);
+    }
+
+    public bool IsSelected()
+    {
+        return isSelected;
     }
 
     void Start()
@@ -185,6 +204,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.B))
         {
             drawFlag = !drawFlag;
+            isSelected = drawFlag;
             DrawBoundBoxes(drawFlag);
         }
     }

@@ -7,7 +7,7 @@ using System;
 [Serializable]
 public class BrickMesh
 {
-    public const byte VERTEX_CNT_PER_STUD = 112;
+    private const byte VERTEX_CNT_PER_STUD = 112;
     private const int VERTEX_CNT_LIMTI_PER_MESH = 65000;
 
     public string name { get; set; }
@@ -239,7 +239,8 @@ public class BrickMesh
                     alphaCnt++;
             }
 
-            Debug.Assert(alphaCnt == 0 || alphaCnt == 3, string.Format("Alpha count is not zero or three: {0}", alphaCnt));
+            Debug.Assert(alphaCnt == 0 || alphaCnt == 3, 
+                string.Format("Alpha count is not zero or three: {0}", alphaCnt));
 
             if (alphaCnt == 0)
             {

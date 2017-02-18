@@ -30,7 +30,7 @@ public class BrickMaterial : MonoBehaviour
                 if (_instance == null)
                 {
                     GameObject container = new GameObject();
-                    container.name = "LdColorTableContainer";
+                    container.name = "BrickMaterial";
                     _instance = container.AddComponent(typeof(BrickMaterial)) as BrickMaterial;
                 }
             }
