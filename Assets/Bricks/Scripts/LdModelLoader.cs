@@ -392,7 +392,6 @@ public class LdModelLoader
         Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
     {
         BrickMesh subBrickMesh = null;
-        bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
 
         FileLines val;
         if (!fileCache.TryGetValue(fileName.ToLower(), out val))
@@ -418,7 +417,7 @@ public class LdModelLoader
         }
 
         if (IsNeedMerge(fileName, val.filePath))
-            parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
+            parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
         else
             parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
 
@@ -591,15 +590,15 @@ public class LdModelLoader
 
     public BrickMesh Load(string fileName)
     {
-        BrickMesh brickMesh = null;
-
         string mainModelName;
+
         if (LoadMPDFile(fileName, out mainModelName))
         {
-            brickMesh = new BrickMesh(fileName);
-            ParseModel(mainModelName, ref brickMesh, Matrix4x4.identity);
+            BrickMesh brickMesh = new BrickMesh(fileName);
+            if (ParseModel(mainModelName, ref brickMesh, Matrix4x4.identity))
+                return brickMesh;
         }
 
-        return brickMesh;
+        return null;
     }
 }

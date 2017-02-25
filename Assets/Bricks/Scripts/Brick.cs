@@ -58,8 +58,7 @@ public class Brick : MonoBehaviour
         renderer.sharedMaterials = customeMaterial;
     }
 
-    public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, 
-        bool invertNext, bool optimizeStud, int maxStudCnt)
+    public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext)
     {
         TransformModel(brickMesh);
 
@@ -74,7 +73,7 @@ public class Brick : MonoBehaviour
         int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
         brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext,
-            ref vts, ref colors, ref opaqueTris, ref transparentTris, optimizeStud, maxStudCnt);
+            ref vts, ref colors, ref opaqueTris, ref transparentTris);
 
         mesh.vertices = vts.ToArray();
         mesh.colors32 = colors.ToArray();

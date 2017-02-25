@@ -7,9 +7,6 @@ using System;
 [Serializable]
 public class BrickMesh
 {
-    private const byte VERTEX_CNT_PER_STUD = 112;
-    private const int VERTEX_CNT_LIMTI_PER_MESH = 65000;
-
     public string name { get; set; }
     public bool bfcEnabled { get; set; }
     public bool invertNext { get; set; }
@@ -21,7 +18,6 @@ public class BrickMesh
     public List<BrickMesh> children { get; set; }
 
     private Matrix4x4 localTr;
-    private BrickMesh studMesh = null;
 
     public string brickInfo()
     {
@@ -56,8 +52,6 @@ public class BrickMesh
         colorIndices = rhs.colorIndices;
         triangles = rhs.triangles;
         children = rhs.children;
-
-        studMesh = rhs.studMesh;
     }
 
     public void PushTriangle(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, bool renderWinding)
@@ -137,31 +131,11 @@ public class BrickMesh
         children.Add(child);
     }
 
-    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child, bool isStud)
+    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
         if (child.vertices.Count == 0 && child.children.Count == 0)
             return;
 
-        if (isStud)
-        {
-            if (studMesh == null)
-                studMesh = new BrickMesh("stud");
-            studMesh.MergeChildBrick(invert, invertByMatrix, color, trMatrix, child);
-        }
-        else
-        {
-            MergeChildBrick(invert, invertByMatrix, color, trMatrix, child);
-            if (child.studMesh != null)
-            {
-                if (studMesh == null)
-                    studMesh = new BrickMesh("stud");
-                studMesh.MergeChildBrick(invert, invertByMatrix, color, trMatrix, child.studMesh);
-            }
-        }
-    }
-
-    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child)
-    {
         bool inverted = invert ^ invertByMatrix;
         int vtCnt = vertices.Count;
 
@@ -257,21 +231,8 @@ public class BrickMesh
         }
     }
 
-    public bool CanDrawStud(bool optimizeStud, int maxStudCnt)
-    {
-        if (studMesh == null)
-            return false;
-
-        bool drawStud = (vertices.Count + studMesh.vertices.Count > VERTEX_CNT_LIMTI_PER_MESH) ? false : true;
-        if (drawStud && optimizeStud && studMesh.vertices.Count > VERTEX_CNT_PER_STUD * maxStudCnt)
-            drawStud = false;
-
-        return drawStud;
-    }
-
     public void GetRenderMeshInfo(short parentBrickColor, bool invert, 
-        ref List<Vector3> vts, ref List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris,
-        bool optimizeStud, int maxStudCnt)
+        ref List<Vector3> vts, ref List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
 
@@ -283,12 +244,5 @@ public class BrickMesh
         GetVertices(ref vts);
         GetColors(effectiveParentColor, ref colors);
         GetTriangles(invert, colors, ref opaqueTris, ref transparentTris);
-
-        if (CanDrawStud(optimizeStud, maxStudCnt))
-        {
-            studMesh.GetVertices(ref vts);
-            studMesh.GetColors(effectiveParentColor, ref colors);
-            studMesh.GetTriangles(invert, colors, ref opaqueTris, ref transparentTris, vertices.Count);
-        }
     }
 }

@@ -9,21 +9,26 @@ public class BrickGenerator : MonoBehaviour
     public GameObject terrainMesh;
     public GameObject brickPrefab;
     public string modelFileName = @"Creator/4349 - Bird.mpd";
-    public bool optimizeStud = true;
-    public int MAX_STUD_CNT = 6;
 
     GameObject headBrick = null;
     GameObject curBrick = null;
     GameObject lastBrick = null;
 
-    private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, bool optimizeStud, int maxStudCnt, 
+    private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         GameObject go = (GameObject)Instantiate(brickPrefab);
 
+        for (int i = 0; i < brickMesh.children.Count; ++i)
+        {
+            bool invertFlag = invertNext ^ brickMesh.invertNext;
+            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
+            CreateMesh(brickMesh.children[i], go.transform, invertFlag, accuColor);
+        }
+
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        if (go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext, optimizeStud, maxStudCnt))
+        if (go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext))
         {
             if (headBrick == null)
             {
@@ -37,13 +42,6 @@ public class BrickGenerator : MonoBehaviour
                 curBrick = go;
                 lastBrick = go;
             }
-        }
-
-        for (int i = 0; i < brickMesh.children.Count; ++i)
-        {
-            bool invertFlag = invertNext ^ brickMesh.invertNext;
-            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
-            CreateMesh(brickMesh.children[i], go.transform, optimizeStud, maxStudCnt, invertFlag, accuColor);
         }
 
         return go;
@@ -102,7 +100,7 @@ public class BrickGenerator : MonoBehaviour
             return null;
         }
 
-        return CreateMesh(brickMesh, transform, optimizeStud, MAX_STUD_CNT);
+        return CreateMesh(brickMesh, transform);
     }
 
     void SetVisibility(bool flag)
