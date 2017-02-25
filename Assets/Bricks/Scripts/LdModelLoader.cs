@@ -12,15 +12,41 @@ public class LdModelLoader
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding   { CCW = 0, CW };
 
-    private Dictionary<string, Tuple<string, bool>> pathCache;
-    private Dictionary<string, List<string>> ldrCache;
+    class FileLines
+    {
+        public bool loadCompleted { get; set; }
+        public string filePath { get; private set; }
+        public List<string> cache = new List<string>();
+
+        public FileLines()
+        {
+            loadCompleted = false;
+            filePath = "";
+        }
+
+        public FileLines(string path, string[] lines)
+        {
+            loadCompleted = true;
+
+            filePath = path;
+            cache.AddRange(lines);
+        }
+
+        public void Add(string line)
+        {
+            cache.Add(line);
+        }
+    }
+
     private Dictionary<string, BrickMesh> brickCache;
+    private Dictionary<string, string> pathCache;
+    private Dictionary<string, FileLines> fileCache;
 
     public LdModelLoader()
     {
-        pathCache = new Dictionary<string, Tuple<string, bool>>();
-        ldrCache = new Dictionary<string, List<string>>();
         brickCache = new Dictionary<string, BrickMesh>();
+        pathCache = new Dictionary<string, string>();
+        fileCache = new Dictionary<string, FileLines>();
     }
 
     public bool Initialize()
@@ -38,11 +64,8 @@ public class LdModelLoader
         for (int i = 0; i < readText.Length; ++i)
         {
             string[] words = readText[i].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 3)
-            {
-                bool isPart = Convert.ToBoolean(words[2]);
-                pathCache.Add(words[0], Tuple.Create<string, bool>(words[1], isPart));
-            }
+            if (words.Length == 2)
+                pathCache.Add(words[0], words[1]);
         }
 
         return true;
@@ -186,7 +209,7 @@ public class LdModelLoader
             accumInvertByMatrix = !accumInvertByMatrix;
 
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return LoadModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
+        return ParseModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
     }
 
     private bool ParseTriInfo(string line, ref BrickMesh brickMesh, 
@@ -345,76 +368,143 @@ public class LdModelLoader
         return brickMesh;
     }
 
-    private bool LoadModel(string fileName, ref BrickMesh parentMesh, 
-        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
+    private bool IsNeedMerge(string fileName, string filePath)
     {
-        BrickMesh subBrickMesh = null;
-        bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
+        string ext = Path.GetExtension(fileName).ToLower();
 
-        Tuple<string, bool> val;
-        if (pathCache.TryGetValue(fileName.ToLower(), out val))
+        if (ext == ".dat")
         {
-            if (brickCache.ContainsKey(fileName))
+            if (filePath.Length > 0)
             {
-                subBrickMesh = new BrickMesh(brickCache[fileName]);
+                string dirName = Path.GetDirectoryName(filePath);
+                return (dirName != "parts");
             }
             else
             {
-                var ldPartsPath = Path.Combine(Application.streamingAssetsPath, "LdParts");
-                var filePath = Path.Combine(ldPartsPath, val.Item1);
-
-                if (!File.Exists(filePath))
-                {
-                    Debug.Log(string.Format("File does not exists: {0}", filePath));
-                    return false;
-                }
-
-                string[] readText = File.ReadAllLines(filePath);
-
-                subBrickMesh = ParseModel(fileName, readText, Matrix4x4.identity);
-                if (subBrickMesh == null)
-                    return false;
-
-                subBrickMesh.Optimize();
-                brickCache[fileName] = new BrickMesh(subBrickMesh);
+                return (Path.GetDirectoryName(fileName).Length > 0);
             }
-
-            if (val.Item2)
-                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-            else
-                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-
-            return true;
-        }
-
-        if (ldrCache.ContainsKey(fileName))
-        {
-            if (brickCache.ContainsKey(fileName))
-            {
-                subBrickMesh = new BrickMesh(brickCache[fileName]);
-            }
-            else
-            {
-                subBrickMesh = ParseModel(fileName, ldrCache[fileName].ToArray(), Matrix4x4.identity);
-                if (subBrickMesh == null)
-                    return false;
-
-                subBrickMesh.Optimize();
-                brickCache[fileName] = new BrickMesh(subBrickMesh);
-            }
-
-            if (Path.GetDirectoryName(fileName).Length == 0)
-                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-            else
-                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
-
-            return true;
         }
 
         return false;
     }
 
-    private bool HasModelName(string line, ref string modelName)
+    private bool ParseModel(string fileName, ref BrickMesh parentMesh, 
+        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
+    {
+        BrickMesh subBrickMesh = null;
+        bool isStud = (fileName.IndexOf("stud", StringComparison.CurrentCultureIgnoreCase) != -1);
+
+        FileLines val;
+        if (!fileCache.TryGetValue(fileName.ToLower(), out val))
+        {
+            Debug.Log(string.Format("Cannot find file cache for {0}", fileName));
+            return false;
+        }
+
+        if (brickCache.ContainsKey(fileName))
+        {
+            subBrickMesh = new BrickMesh(brickCache[fileName]);
+        }
+        else
+        {
+            string[] readText = val.cache.ToArray();
+
+            subBrickMesh = ParseModel(fileName, readText, Matrix4x4.identity);
+            if (subBrickMesh == null)
+                return false;
+
+            subBrickMesh.Optimize();
+            brickCache[fileName] = new BrickMesh(subBrickMesh);
+        }
+
+        if (IsNeedMerge(fileName, val.filePath))
+            parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh, isStud);
+        else
+            parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+
+        return true;
+    }
+
+    private bool ExtractSubFileNames(string[] readText, ref List<string> subFileNames)
+    {
+        for (int i = 0; i < readText.Length; ++i)
+        {
+            string line = readText[i];
+
+            line.Replace("\t", " ");
+            line = line.Trim();
+
+            if (line.Length == 0)
+                continue;
+
+            int lineType = (int)Char.GetNumericValue(line[0]);
+            if (lineType == 1)
+            {
+                string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (words.Length < 15)
+                {
+                    Debug.Log(string.Format("Subfile syntax error: {0}", line));
+                    return false;
+                }
+
+                string fname = words[14];
+                for (int j = 15; j < words.Length; ++j)
+                    fname += words[j];
+
+                subFileNames.Add(fname);
+            }
+        }
+
+        return true;
+    }
+
+    private bool LoadCacheFiles(string fileName, ref List<string> subFileNames)
+    {
+        FileLines fileLines;
+        List<string> localSubFileNames = new List<string>();
+
+        if (fileCache.TryGetValue(fileName.ToLower(), out fileLines))
+        {
+            if (fileLines.loadCompleted)
+                return true;
+
+            if (!ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames))
+                return false;
+
+            fileCache[fileName.ToLower()].loadCompleted = true;
+        }
+        else
+        {
+            string val;
+            if (!pathCache.TryGetValue(fileName.ToLower(), out val))
+            {
+                Debug.Log(string.Format("Parts list has no {0}", fileName));
+                return false;
+            }
+
+            var ldPartsPath = Path.Combine(Application.streamingAssetsPath, "LdParts");
+            var filePath = Path.Combine(ldPartsPath, val);
+
+            if (!File.Exists(filePath))
+            {
+                Debug.Log(string.Format("File does not exists: {0}", filePath));
+                return false;
+            }
+
+            string[] readText = File.ReadAllLines(filePath);
+            if (!ExtractSubFileNames(readText, ref localSubFileNames))
+                return false;
+
+            fileCache.Add(fileName.ToLower(), new FileLines(val, readText));
+        }
+
+        if (localSubFileNames.Count != 0)
+            subFileNames.AddRange(localSubFileNames);
+
+        return true;
+    }
+
+    private bool ExtractModelName(string line, ref string modelName)
     {
         string[] words = line.Split(' ');
 
@@ -433,35 +523,38 @@ public class LdModelLoader
             modelName += words[i];
         }
 
+        modelName = modelName.ToLower();
+
         return true;
     }
 
-    private string SplitModel(string[] readText)
+    private string LoadLDRFiles(string[] readText)
     {
         string mainModelName = "";
         string modelName = "";
 
-        ldrCache.Clear();
+        fileCache.Clear();
 
         for (int i = 0; i < readText.Length; ++i)
         {
-            if (HasModelName(readText[i], ref modelName))
+            if (ExtractModelName(readText[i], ref modelName))
             {
                 if (mainModelName.Length == 0)
                     mainModelName = modelName;
-                ldrCache.Add(modelName, new List<string>());
+
+                fileCache.Add(modelName, new FileLines());
             }
 
             if (modelName != null)
-                ldrCache[modelName].Add(readText[i]);
+                fileCache[modelName].cache.Add(readText[i]);
         }
 
         return mainModelName;
     }
 
-    public BrickMesh Load(string fileName)
+    public bool LoadMPDFile(string fileName, out string mainModelName)
     {
-        BrickMesh brickMesh = null;
+        mainModelName = "";
 
         string ext = Path.GetExtension(fileName);
         if (ext.Equals(LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
@@ -472,20 +565,39 @@ public class LdModelLoader
             if (!File.Exists(filePath))
             {
                 Debug.Log(string.Format("File does not exists: {0}", filePath));
-                return null;
+                return false;
             }
 
             string[] readText = File.ReadAllLines(filePath);
+            mainModelName = LoadLDRFiles(readText);
 
-            string mainModelName = SplitModel(readText);
-            if (mainModelName.Length == 0 || !ldrCache.ContainsKey(mainModelName))
+            List<string> subFileNames = new List<string>();
+            subFileNames.Add(mainModelName);
+
+            while (subFileNames.Count > 0)
             {
-                Debug.Log(string.Format("Cannot find main model: {0}", mainModelName));
-                return null;
+                string fname = subFileNames[0];
+                subFileNames.RemoveAt(0);
+
+                if (!LoadCacheFiles(fname, ref subFileNames))
+                    return false;
             }
 
+            return true;
+        }
+
+        return false;
+    }
+
+    public BrickMesh Load(string fileName)
+    {
+        BrickMesh brickMesh = null;
+
+        string mainModelName;
+        if (LoadMPDFile(fileName, out mainModelName))
+        {
             brickMesh = new BrickMesh(fileName);
-            LoadModel(mainModelName, ref brickMesh, Matrix4x4.identity);
+            ParseModel(mainModelName, ref brickMesh, Matrix4x4.identity);
         }
 
         return brickMesh;
