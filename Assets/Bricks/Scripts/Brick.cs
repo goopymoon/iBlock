@@ -27,9 +27,16 @@ public class Brick : MonoBehaviour
     public GameObject prevBrick { get; set; }
     public GameObject nextBrick { get; set; }
 
+    private TransformData originalTd;
+
     public void SetParent(Transform parent)
     {
         transform.SetParent(parent, false);
+    }
+
+    public void RestoreTransform()
+    {
+        transform.Restore(originalTd);
     }
 
     private void TransformModel(BrickMesh brickMesh)
@@ -43,6 +50,8 @@ public class Brick : MonoBehaviour
         transform.localPosition = localPosition;
         transform.localRotation = localRotation;
         transform.localScale = localScale;
+
+        originalTd = transform.Clone();
     }
 
     private void ChangeMaterial(BrickMaterial.MatType matType, int matIndexOffset, int matCnt)
@@ -56,6 +65,12 @@ public class Brick : MonoBehaviour
             customeMaterial[i] = BrickMaterial.Instance.GetMaterial(matType + matIndexOffset + i);
         }
         renderer.sharedMaterials = customeMaterial;
+    }
+
+    private void AddBoxCollider()
+    {
+        var boxCollider = GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
+        boxCollider.isTrigger = true;
     }
 
     public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext)
@@ -104,7 +119,8 @@ public class Brick : MonoBehaviour
         mesh.RecalculateBounds();
 
         GetComponent<MeshFilter>().mesh = mesh;
-        GetComponent<Renderer>().gameObject.AddComponent<BoxCollider>();
+
+        AddBoxCollider();
 
         return true;
     }

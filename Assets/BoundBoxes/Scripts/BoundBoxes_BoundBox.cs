@@ -111,8 +111,8 @@ public class BoundBoxes_BoundBox : MonoBehaviour
 
     private bool CalculateBounds()
     {
-        if (colliderBased && CalculateBoundsFromBoxColliders())
-            return true;
+        if (colliderBased)
+            return CalculateBoundsFromBoxColliders();
 
         if (CalculateBoundsFromStaticBatch())
             return true;
