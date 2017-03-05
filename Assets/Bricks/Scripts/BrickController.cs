@@ -10,18 +10,18 @@ public class BrickController : MonoBehaviour
     GameObject curBrick = null;
     GameObject lastBrick = null;
 
-    public Bounds outerAABB { get; set; }
-
     enum eControlMode
     {
         CM_SHOW,
         CM_COMPOSE,
     }
 
-    eControlMode controlMode = eControlMode.CM_SHOW;
-    float mouseDragDistanceThreshold = 10;
+    private eControlMode controlMode = eControlMode.CM_SHOW;
 
-    private Vector3 currentInputPosition;
+    private const float mouseDragDistanceThreshold = 5;
+    private const float brickMoveSpeed = 5.0f;
+    private Vector3 brickPos = Vector3.zero;
+    private Vector3 destInputPosition;
 
     public void Register(GameObject go)
     {
@@ -128,16 +128,44 @@ public class BrickController : MonoBehaviour
         }
     }
 
-    private bool TerrainPos(GameObject go, ref Vector3 pos)
+    private void ToggleCompseMode()
+    {
+        if (controlMode == eControlMode.CM_COMPOSE)
+            controlMode = eControlMode.CM_SHOW;
+        else if (controlMode == eControlMode.CM_SHOW)
+            controlMode = eControlMode.CM_COMPOSE;
+    }
+
+    private bool IsMouseButtonClicked(int slot)
+    {
+        if (Input.GetMouseButtonDown(slot))
+        {
+            destInputPosition = Input.mousePosition;
+        }
+        else if (Input.GetMouseButtonUp(slot))
+        {
+            Vector3 delta = Input.mousePosition - destInputPosition;
+            return (delta.magnitude < mouseDragDistanceThreshold);
+        }
+
+        return false;
+    }
+
+    private void StickToGridLine(ref Vector3 pos)
+    {
+        pos.x = Mathf.Ceil(pos.x / LdConstant.LDU_IN_MM) * LdConstant.LDU_IN_MM;
+        pos.z = Mathf.Ceil(pos.z / LdConstant.LDU_IN_MM) * LdConstant.LDU_IN_MM;
+    }
+
+    private bool GetBrickTargetPos(GameObject skipObj, out Vector3 pos)
     {
         RaycastHit[] hits = Physics.RaycastAll(Camera.main.ScreenPointToRay(Input.mousePosition));
-        if (hits.Length == 0)
-            return false;
-
         bool found = false;
+
+        pos = Vector3.zero;
         foreach (RaycastHit hit in hits)
         {
-            if (hit.transform.gameObject == go)
+            if (hit.transform.gameObject == skipObj)
                 continue;
 
             if (!found)
@@ -155,59 +183,86 @@ public class BrickController : MonoBehaviour
         return found;
     }
 
-    private void ToggleCompseMode()
+    IEnumerator DragBrick(Vector3 destPos)
     {
-        if (controlMode == eControlMode.CM_COMPOSE)
-            controlMode = eControlMode.CM_SHOW;
-        else if (controlMode == eControlMode.CM_SHOW)
-            controlMode = eControlMode.CM_COMPOSE;
+        float moveSpeed = Time.deltaTime * brickMoveSpeed;
+
+        StickToGridLine(ref destPos);
+
+        while (destPos != brickPos)
+        {
+            var translation = destPos - brickPos;
+
+            translation.x = Mathf.Clamp(translation.x, -moveSpeed, moveSpeed);
+            translation.z = Mathf.Clamp(translation.z, -moveSpeed, moveSpeed);
+
+            brickPos = brickPos + translation;
+
+            yield return null;
+        }
     }
 
-    private void ControlComposite()
+    private void StickToUnderlaidBricks(GameObject go, ref Vector3 pos)
     {
-        if (curBrick == null)
+        Bounds aabb = go.GetComponent<Brick>().AABB;
+        Vector3 raycastStartPos = pos + Vector3.up * 100;
+
+        RaycastHit[] hits = Physics.BoxCastAll(raycastStartPos, aabb.extents,
+            Vector3.down, go.transform.rotation, Mathf.Infinity);
+
+        float height = 0;
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.transform.gameObject == go)
+                continue;
+
+            if (hit.transform.gameObject == terrainMesh)
+                continue;
+
+            if (height < hit.point.y)
+                height = hit.point.y;
+        }
+
+        pos.y = height + aabb.extents.y;
+    }
+
+    void LateUpdate()
+    {
+        if (controlMode != eControlMode.CM_COMPOSE)
             return;
 
-        Vector3 pos = new Vector3();
+        if (IsMouseButtonClicked(0))
+        {
+            NextStage();
+            return;
+        }
+        else if (IsMouseButtonClicked(1))
+        {
+            PreviousStage();
+            return;
+        }
 
-        if (TerrainPos(curBrick, ref pos))
-        { 
-            Bounds aabb = curBrick.GetComponent<Brick>().AABB;
-            Vector3 raycastStartPos = pos + transform.up * outerAABB.size.y * 2;
-            Vector3 maxOffset = pos;
+        if (curBrick != null)
+        {
+            Vector3 candidatePos;
 
-            RaycastHit[] hits = Physics.RaycastAll(raycastStartPos, -1 * curBrick.transform.up);
-            foreach (RaycastHit hit in hits)
+            if (GetBrickTargetPos(curBrick, out candidatePos))
             {
-                if (hit.transform.gameObject != curBrick)
-                {
-                    Vector3 verticalShift = hit.point + transform.up * aabb.extents.y;
-                    if (verticalShift.y > maxOffset.y)
-                    {
-                        maxOffset = verticalShift;
-                    }
-                }
+                StartCoroutine("DragBrick", candidatePos);
+
+                StickToUnderlaidBricks(curBrick, ref brickPos);
+
+                if (curBrick.GetComponent<Brick>().IsNearlyPositioned(brickPos))
+                    curBrick.GetComponent<Brick>().RestoreTransform();
+                else
+                    curBrick.transform.position = brickPos;
             }
-
-            curBrick.transform.position = maxOffset;
         }
     }
 
-    private bool IsMouseButtonClicked(int slot)
+    private void Awake()
     {
-        if (Input.GetMouseButtonDown(slot))
-        {
-            currentInputPosition = Input.mousePosition;
-        }
-        else if (Input.GetMouseButtonUp(slot))
-        {
-            Vector3 dist = Input.mousePosition - currentInputPosition;
-            return (dist.magnitude < mouseDragDistanceThreshold);
-        }
-
-        return false;
     }
-
     // Use this for initialization
     void Start()
     {
@@ -228,8 +283,6 @@ public class BrickController : MonoBehaviour
 
         if (controlMode == eControlMode.CM_COMPOSE)
         {
-            ControlComposite();
-
             if (Input.GetKeyDown(KeyCode.S))
             {
                 StartStage();
@@ -238,11 +291,11 @@ public class BrickController : MonoBehaviour
             {
                 EndStage();
             }
-            else if (Input.GetKeyDown(KeyCode.N) || IsMouseButtonClicked(0))
+            else if (Input.GetKeyDown(KeyCode.N))
             {
                 NextStage();
             }
-            else if (Input.GetKeyDown(KeyCode.P) || IsMouseButtonClicked(1))
+            else if (Input.GetKeyDown(KeyCode.P))
             {
                 PreviousStage();
             }

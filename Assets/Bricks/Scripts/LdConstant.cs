@@ -18,6 +18,8 @@
     public const short LD_COLOR_MAIN = 16;
     public const short LD_COLOR_EDGE = 24;
 
+    public const float LDU_IN_MM = 0.4f;
+
     public const string TAG_MPD_FILE_EXT = ".mpd";
     public const string TAG_LDR_FILE_EXT = ".ldr";
     public const string TAG_DAT_FILE_EXT = ".dat";

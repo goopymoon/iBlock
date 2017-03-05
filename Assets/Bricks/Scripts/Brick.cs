@@ -39,6 +39,16 @@ public class Brick : MonoBehaviour
         transform.Restore(originalTd);
     }
 
+    public bool IsNearlyPositioned(Vector3 pos)
+    {
+        const float MatchThreshold = LdConstant.LDU_IN_MM;
+
+        Vector3 deltaPos = pos - originalTd.position;
+        deltaPos.y = 0;
+
+        return (deltaPos.magnitude < MatchThreshold);
+    }
+
     private void TransformModel(BrickMesh brickMesh)
     {
         Vector3 localPosition;

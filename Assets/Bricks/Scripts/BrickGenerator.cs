@@ -95,8 +95,6 @@ public class BrickGenerator : MonoBehaviour
 
         if (go != null)
         {
-            GetComponent<BrickController>().outerAABB = go.GetComponent<Brick>().AABB;
-
             InitCameraZoomRange(go);
             SnapToTerrain(go);
         }

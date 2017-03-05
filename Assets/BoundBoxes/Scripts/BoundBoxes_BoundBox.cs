@@ -169,10 +169,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         else
         {
             if (!isSelected)
-            {
                 cameralines.ClearOutOBBLines(GetInstanceID());
-                isInitialized = false;
-            }
         }
     }
 
@@ -181,7 +178,6 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         isSelected = flag;
 
         cameralines.ClearOutOBBLines(GetInstanceID());
-        isInitialized = false;
 
         DrawBoundBoxes(flag);
     }
