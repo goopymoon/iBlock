@@ -4,16 +4,21 @@ using System.Collections;
 [AddComponentMenu("Camera-Control/3dsMax Camera Modified")]
 public class BoundBoxes_maxCamera : MonoBehaviour
 {
+    const float aboveYmin = 0.8f;
+    const float yMaxLimit = 80.0f;
+
+    const float pinchRatio = 2;
+    const float minPinchDistance = 0;
+
+    const float zoomRate = 1.0f;
+    const float panSpeed = 5.0f;
+    const float rotDampening = 5.0f;
+    const float zoomDampening = 0.2f;
+
     public Transform target;
 	public GameObject terrainMesh;
     public Vector3 targetOffset;
     public float distance = 5.0f;
-    public float aboveYmin = 0.8f;
-    public float yMaxLimit = 80.0f;
-    public float zoomRate = 1.0f;
-    public float panSpeed = 5.0f;
-    public float rotDampening = 5.0f;
-    public float zoomDampening = 0.2f;
 
     [System.ComponentModel.DefaultValue(20f)]
     public float maxDistance { get; set; }
@@ -68,19 +73,64 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
     void UpdateByTouch()
     {
-        float pinchAmount = 0;
-        Quaternion desiredRotation = transform.rotation;
+        float pinchDistanceDelta = 0;
 
-        DetectTouchMovement.Calculate();
+        if (Input.touchCount == 1)
+        {
+            Touch touch1 = Input.touches[0];
 
-        if (Mathf.Abs(DetectTouchMovement.pinchDistanceDelta) > 0)
-        { // zoom
-            pinchAmount = DetectTouchMovement.pinchDistanceDelta;
+            desiredInputPosition = touch1.position;
+            if (touch1.phase == TouchPhase.Began)
+                currentInputPosition = desiredInputPosition;
+
+            RaycastHit[] hits;
+            hits = Physics.RaycastAll(GetComponent<Camera>().ScreenPointToRay(currentInputPosition), 100);
+            if (hits.Length == 0) return;
+
+            bool prevDrag = dragging;
+            dragging = false;
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.transform.gameObject == terrainMesh)
+                {
+                    hitPoint = hit.point;
+                    dragging = true;
+                    break;
+                }
+            }
+            if (!prevDrag && dragging)
+                StartCoroutine("DragObject", hitPoint);
+
+            // calculate position based on the new currentDistance 	
+            currentInputPosition = Vector2.Lerp(currentInputPosition, desiredInputPosition, Time.deltaTime * panSpeed);
+        }
+        else if (Input.touchCount == 2)
+        {
+            Touch touch1 = Input.touches[0];
+            Touch touch2 = Input.touches[1];
+
+            // ... if at least one of them moved ...
+            if (touch1.phase == TouchPhase.Moved || touch2.phase == TouchPhase.Moved)
+            {
+                // ... check the delta distance between them ...
+                float pinchDistance = Vector2.Distance(touch1.position, touch2.position);
+                float prevDistance = Vector2.Distance(touch1.position - touch1.deltaPosition,
+                                                      touch2.position - touch2.deltaPosition);
+
+                Vector2 delta = touch1.deltaPosition - touch2.deltaPosition;
+                pinchDistanceDelta = pinchDistance - prevDistance;
+
+                // ... if it's greater than a minimum threshold, it's a pinch!
+                if (Mathf.Abs(pinchDistanceDelta) > minPinchDistance)
+                    pinchDistanceDelta *= (pinchRatio / Screen.width);
+                else
+                    pinchDistanceDelta = 0;
+            }
         }
 
-        if (pinchAmount != 0.0f)
+        if (pinchDistanceDelta != 0.0f)
         {
-            var delta = pinchAmount * zoomRate * Mathf.Abs(desiredDistance);
+            var delta = pinchDistanceDelta * zoomRate * Mathf.Abs(desiredDistance);
             desiredDistance = Mathf.Clamp(desiredDistance - delta, minDistance, maxDistance);
         }
         if (currentDistance != desiredDistance)
@@ -157,8 +207,11 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
     void LateUpdate()
     {
-        UpdateByTouch();
+#if UNITY_STANDALONE_WIN
         UpdateByMouse();
+#else
+        UpdateByTouch();
+#endif
     }
 
     private static float ClampAngle(float angle, float min, float max)
@@ -179,8 +232,12 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     {
         float dragSpeed = Time.deltaTime * panSpeed;
 
+#if UNITY_STANDALONE_WIN
         while (Input.GetMouseButton(0) && dragging)
-		{	
+#else
+        while (Input.touchCount == 1 && dragging)
+#endif
+        {	
 			var translation = startingHit - hitPoint;
 
             translation.x = Mathf.Clamp(translation.x, -dragSpeed, dragSpeed);
