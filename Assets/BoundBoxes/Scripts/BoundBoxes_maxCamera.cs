@@ -66,7 +66,33 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 		if (transform.position.y < target.position.y) yDeg *= -1;
     }
 
-    void LateUpdate()
+    void UpdateByTouch()
+    {
+        float pinchAmount = 0;
+        Quaternion desiredRotation = transform.rotation;
+
+        DetectTouchMovement.Calculate();
+
+        if (Mathf.Abs(DetectTouchMovement.pinchDistanceDelta) > 0)
+        { // zoom
+            pinchAmount = DetectTouchMovement.pinchDistanceDelta;
+        }
+
+        if (pinchAmount != 0.0f)
+        {
+            var delta = pinchAmount * zoomRate * Mathf.Abs(desiredDistance);
+            desiredDistance = Mathf.Clamp(desiredDistance - delta, minDistance, maxDistance);
+        }
+        if (currentDistance != desiredDistance)
+        {
+            currentDistance = Mathf.Lerp(currentDistance, desiredDistance, zoomDampening);
+
+            position = target.position - (rotation * Vector3.forward * currentDistance + targetOffset);
+            transform.position = position;
+        }
+    }
+
+    void UpdateByMouse()
     {
         if (Input.GetMouseButton(1))
         {
@@ -128,7 +154,13 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             transform.position = position;
         }
     }
- 
+
+    void LateUpdate()
+    {
+        UpdateByTouch();
+        UpdateByMouse();
+    }
+
     private static float ClampAngle(float angle, float min, float max)
     {
         if (angle < -360)
