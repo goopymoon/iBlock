@@ -15,6 +15,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     const float rotDampening = 5.0f;
     const float zoomDampening = 0.2f;
 
+    public bool useTouch = false;
     public Transform target;
 	public GameObject terrainMesh;
     public Vector3 targetOffset;
@@ -207,11 +208,10 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
     void LateUpdate()
     {
-#if UNITY_STANDALONE_WIN
-        UpdateByMouse();
-#else
-        UpdateByTouch();
-#endif
+        if (useTouch)
+            UpdateByTouch();
+        else
+            UpdateByMouse();
     }
 
     private static float ClampAngle(float angle, float min, float max)
@@ -231,12 +231,9 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 	IEnumerator DragObject (Vector3 startingHit)
     {
         float dragSpeed = Time.deltaTime * panSpeed;
+        bool flag = useTouch ? (Input.touchCount == 1) : Input.GetMouseButton(0);
 
-#if UNITY_STANDALONE_WIN
-        while (Input.GetMouseButton(0) && dragging)
-#else
-        while (Input.touchCount == 1 && dragging)
-#endif
+        while (flag && dragging)
         {	
 			var translation = startingHit - hitPoint;
 
@@ -246,7 +243,9 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             transform.position = transform.position + translation;
             target.position = target.position + translation;
 
-			yield return null;
+            flag = useTouch ? (Input.touchCount == 1) : Input.GetMouseButton(0);
+
+            yield return null;
 		}
 
 		dragging = false;
