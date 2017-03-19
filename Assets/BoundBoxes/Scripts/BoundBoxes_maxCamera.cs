@@ -15,7 +15,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     const float rotDampening = 5.0f;
     const float zoomDampening = 0.2f;
 
-    public bool useTouch = false;
+    public bool useTouch = true;
     public Transform target;
 	public GameObject terrainMesh;
     public Vector3 targetOffset;
@@ -44,7 +44,54 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 
     void Start() { Init(); }
     void OnEnable() { Init(); }
- 
+
+    static bool FasterLineSegmentIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
+    {
+
+        Vector2 a = p2 - p1;
+        Vector2 b = p3 - p4;
+        Vector2 c = p1 - p3;
+
+        float alphaNumerator = b.y * c.x - b.x * c.y;
+        float alphaDenominator = a.y * b.x - a.x * b.y;
+        float betaNumerator = a.x * c.y - a.y * c.x;
+        float betaDenominator = a.y * b.x - a.x * b.y;
+
+        bool doIntersect = true;
+
+        if (alphaDenominator == 0 || betaDenominator == 0)
+        {
+            doIntersect = false;
+        }
+        else
+        {
+            if (alphaDenominator > 0)
+            {
+                if (alphaNumerator < 0 || alphaNumerator > alphaDenominator)
+                {
+                    doIntersect = false;
+
+                }
+            }
+            else if (alphaNumerator > 0 || alphaNumerator < alphaDenominator)
+            {
+                doIntersect = false;
+            }
+
+            if (doIntersect && betaDenominator > 0) {
+                if (betaNumerator < 0 || betaNumerator > betaDenominator)
+                {
+                    doIntersect = false;
+                }
+            } else if (betaNumerator > 0 || betaNumerator < betaDenominator)
+            {
+                doIntersect = false;
+            }
+        }
+
+        return doIntersect;
+    }
+
     public void Init()
     {
         //If there is no target, create a temporary target at 'distance' from the camera's current viewpoint
@@ -76,12 +123,12 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     {
         float pinchDistanceDelta = 0;
 
-        if (Input.touchCount == 1)
+        if (Input.touchCount == 3)
         {
-            Touch touch1 = Input.touches[0];
+            Touch touch = Input.touches[0];
 
-            desiredInputPosition = touch1.position;
-            if (touch1.phase == TouchPhase.Began)
+            desiredInputPosition = touch.position;
+            if (touch.phase == TouchPhase.Began)
                 currentInputPosition = desiredInputPosition;
 
             RaycastHit[] hits;
@@ -100,7 +147,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
                 }
             }
             if (!prevDrag && dragging)
-                StartCoroutine("DragObject", hitPoint);
+                StartCoroutine("DragObjectByTouch", hitPoint);
 
             // calculate position based on the new currentDistance 	
             currentInputPosition = Vector2.Lerp(currentInputPosition, desiredInputPosition, Time.deltaTime * panSpeed);
@@ -184,7 +231,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
                 }
             }
             if (!prevDrag && dragging)
-                StartCoroutine("DragObject", hitPoint);
+                StartCoroutine("DragObjectByMouse", hitPoint);
 
             // calculate position based on the new currentDistance 	
             currentInputPosition = Vector2.Lerp(currentInputPosition, desiredInputPosition, Time.deltaTime * panSpeed);
@@ -228,12 +275,11 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     {
 	}
 
-	IEnumerator DragObject (Vector3 startingHit)
+	IEnumerator DragObjectByMouse (Vector3 startingHit)
     {
         float dragSpeed = Time.deltaTime * panSpeed;
-        bool flag = useTouch ? (Input.touchCount == 1) : Input.GetMouseButton(0);
 
-        while (flag && dragging)
+		while (Input.GetMouseButton(0))
         {	
 			var translation = startingHit - hitPoint;
 
@@ -243,9 +289,27 @@ public class BoundBoxes_maxCamera : MonoBehaviour
             transform.position = transform.position + translation;
             target.position = target.position + translation;
 
-            flag = useTouch ? (Input.touchCount == 1) : Input.GetMouseButton(0);
-
             yield return null;
+		}
+
+		dragging = false;
+	}
+
+	IEnumerator DragObjectByTouch (Vector3 startingHit)
+	{
+		float dragSpeed = Time.deltaTime * panSpeed;
+
+		while (Input.touchCount == 3)
+		{	
+			var translation = startingHit - hitPoint;
+
+			translation.x = Mathf.Clamp(translation.x, -dragSpeed, dragSpeed);
+			translation.z = Mathf.Clamp(translation.z, -dragSpeed, dragSpeed);
+
+			transform.position = transform.position + translation;
+			target.position = target.position + translation;
+
+			yield return null;
 		}
 
 		dragging = false;

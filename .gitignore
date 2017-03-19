@@ -6,6 +6,7 @@ Temp/
 obj/
 Build
 Library/
+*.apk
    
 # ===================================== #
 # Visual Studio / MonoDevelop generated #
@@ -25,6 +26,7 @@ ExportedObj/
 *.app
 *.exe
 *.*_data
+*.dll
 
 Build/iOS
 Build/android

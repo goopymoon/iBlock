@@ -32,7 +32,7 @@ public class BrickGenerator : MonoBehaviour
         return go;
     }
 
-    void InitCameraZoomRange(GameObject go)
+    private void InitCameraZoomRange(GameObject go)
     {
         Bounds aabb = go.GetComponent<Brick>().AABB;
         var mCameraController = Camera.main.GetComponent<BoundBoxes_maxCamera>();
@@ -59,45 +59,37 @@ public class BrickGenerator : MonoBehaviour
         }
     }
 
-    void Awake()
+	IEnumerator LoadModel()
     {
-        BrickMaterial.Instance.Initialize();
-        LdColorTable.Instance.Initialize();
+		while (!LdColorTable.Instance.isReady)
+			yield return null;
+
+		while(!LdModelLoader.Instance.isInitialized)
+			yield return null;
+
+		LdModelLoader.Instance.Load(modelFileName);
+
+		while(!LdModelLoader.Instance.isModelReady)
+            yield return null;
+
+		var go = CreateMesh(LdModelLoader.Instance.model, transform);
+
+		InitCameraZoomRange(go);
+		SnapToTerrain(go);
     }
 
-    GameObject LoadModel()
+    private void Awake()
     {
-        //modelFileName = @"Modular buildings/10182 - Cafe Corner.mpd";
-        //modelFileName = @"Friends/3931 - Emma's Splash Pool.mpd";
-        //modelFileName = @"Simpsons/71006_-_the_simpsons_house.mpd";
-
-        LdModelLoader modelLoader = new LdModelLoader();
-        if (!modelLoader.Initialize())
-        {
-            Debug.Log(string.Format("Cannot initailize LdMoelLoader."));
-            return null;
-        }
-
-        BrickMesh brickMesh = modelLoader.Load(modelFileName);
-        if (brickMesh == null)
-        {
-            Debug.Log(string.Format("Cannot parse: {0}", modelFileName));
-            return null;
-        }
-
-        return CreateMesh(brickMesh, transform);
+        BrickMaterial.Instance.Initialize();
     }
 
     // Use this for initialization
     void Start ()
     {
-        var go = LoadModel();
+        LdColorTable.Instance.Initialize();
+        LdModelLoader.Instance.Initialize();
 
-        if (go != null)
-        {
-            InitCameraZoomRange(go);
-            SnapToTerrain(go);
-        }
+        StartCoroutine("LoadModel");
     }
 
     // Update is called once per frame

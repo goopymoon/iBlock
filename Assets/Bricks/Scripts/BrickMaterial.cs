@@ -72,14 +72,4 @@ public class BrickMaterial : MonoBehaviour
         else
             return _customeMaterial[MatType.DEFAUTL];
     }
-
-    // Use this for initialization
-    void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
 }

@@ -7,8 +7,12 @@ using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
 
-public class LdModelLoader
+public class LdModelLoader : MonoBehaviour
 {
+	public bool isInitialized { get; set; }
+	public bool isModelReady { get; set; }
+	public BrickMesh model;
+
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding   { CCW = 0, CW };
 
@@ -42,33 +46,100 @@ public class LdModelLoader
     private Dictionary<string, string> pathCache;
     private Dictionary<string, FileLines> fileCache;
 
-    public LdModelLoader()
-    {
-        brickCache = new Dictionary<string, BrickMesh>();
-        pathCache = new Dictionary<string, string>();
-        fileCache = new Dictionary<string, FileLines>();
-    }
+    // member variables used by file loading coroutine
+    private bool FileCacheResult = true;
+    private bool fileLoadResult = true;
+	private string readString;
 
-    public bool Initialize()
-    { 
-        var filePath = Path.Combine(Application.streamingAssetsPath, "partspath.lst");
+	private string mainModelName;
+	private List<string> subFileNames;
 
-        if (!File.Exists(filePath))
+	private static LdModelLoader _instance;
+	public static LdModelLoader Instance
+	{
+		get
+		{
+			if (_instance == null)
+			{
+				_instance = GameObject.FindObjectOfType(typeof(LdModelLoader)) as LdModelLoader;
+				if (_instance == null)
+				{
+					GameObject container = new GameObject();
+					container.name = "LdModelLoader";
+					_instance = container.AddComponent(typeof(LdModelLoader)) as LdModelLoader;
+				}
+			}
+
+			return _instance;
+		}
+	}
+		
+	public LdModelLoader()
+	{
+		pathCache = new Dictionary<string, string>();
+		fileCache = new Dictionary<string, FileLines>();
+		brickCache = new Dictionary<string, BrickMesh>();
+	}
+
+	IEnumerator LoadFile(string filePath)
+	{
+        readString = string.Empty;
+        fileLoadResult = true;
+
+        if (filePath.Contains("://"))
         {
-            Debug.Log(string.Format("File does not exists: {0}", filePath));
-            return false;
+            WWW www = new WWW(filePath);
+            new WWW(filePath);
+            yield return www;
+
+            if (!string.IsNullOrEmpty(www.error))
+            {
+                fileLoadResult = false;
+                Debug.Log(string.Format("{0}: {1}", filePath, www.error));
+                yield break;
+            }
+            readString = www.text;
+        }
+        else
+        {
+            if (!File.Exists(filePath))
+            {
+                Debug.Log(string.Format("File does not exists: {0}", filePath));
+                yield break;
+            }
+            readString = File.ReadAllText(filePath);
         }
 
-        string[] readText = File.ReadAllLines(filePath);
+        readString = Regex.Replace(readString, @"\r\n?|\n", Environment.NewLine);
+
+        Debug.Log(string.Format("{0}: loaded string length {1}", filePath, readString.Length));
+    }
+		
+	IEnumerator LoadPartsPathFile()
+	{ 
+		var filePath = Path.Combine(Application.streamingAssetsPath, "partspath.lst");
+
+		yield return StartCoroutine ("LoadFile", filePath);
+        if (!fileLoadResult)
+            yield break;
+        while (readString.Length == 0)
+            yield return null;
+
+        string[] readText = readString.Split(
+            Environment.NewLine.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries);
 
         for (int i = 0; i < readText.Length; ++i)
         {
-            string[] words = readText[i].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] words = readText[i].Split(new[] { ' ' },
+                StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 2)
                 pathCache.Add(words[0], words[1]);
         }
 
-        return true;
+        isInitialized = true;
+
+        Debug.Log(string.Format("Path cache of parts is ready.", filePath));
     }
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -391,18 +462,19 @@ public class LdModelLoader
     private bool ParseModel(string fileName, ref BrickMesh parentMesh, 
         Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
     {
+        string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
         BrickMesh subBrickMesh = null;
 
         FileLines val;
-        if (!fileCache.TryGetValue(fileName.ToLower(), out val))
+        if (!fileCache.TryGetValue(cacheFileName, out val))
         {
-            Debug.Log(string.Format("Cannot find file cache for {0}", fileName));
+            Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
             return false;
         }
 
-        if (brickCache.ContainsKey(fileName))
+        if (brickCache.ContainsKey(cacheFileName))
         {
-            subBrickMesh = new BrickMesh(brickCache[fileName]);
+            subBrickMesh = new BrickMesh(brickCache[cacheFileName]);
         }
         else
         {
@@ -413,7 +485,7 @@ public class LdModelLoader
                 return false;
 
             subBrickMesh.Optimize();
-            brickCache[fileName] = new BrickMesh(subBrickMesh);
+            brickCache[cacheFileName] = new BrickMesh(subBrickMesh);
         }
 
         if (IsNeedMerge(fileName, val.filePath))
@@ -448,59 +520,80 @@ public class LdModelLoader
 
                 string fname = words[14];
                 for (int j = 15; j < words.Length; ++j)
+                {
                     fname += words[j];
+                }
 
-                subFileNames.Add(fname);
+                subFileNames.Add(fname.ToLower());
             }
         }
 
         return true;
     }
 
-    private bool LoadCacheFiles(string fileName, ref List<string> subFileNames)
+    IEnumerator LoadCacheFiles(string fileName)
     {
+        string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
+
         FileLines fileLines;
         List<string> localSubFileNames = new List<string>();
 
-        if (fileCache.TryGetValue(fileName.ToLower(), out fileLines))
+        if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
             if (fileLines.loadCompleted)
-                return true;
+            {
+                FileCacheResult = true;
+                yield break;
+            }
 
             if (!ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames))
-                return false;
+            {
+                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
+                FileCacheResult = false;
+                yield break;
+            }
 
-            fileCache[fileName.ToLower()].loadCompleted = true;
+            fileCache[cacheFileName].loadCompleted = true;
         }
         else
         {
             string val;
-            if (!pathCache.TryGetValue(fileName.ToLower(), out val))
+            if (!pathCache.TryGetValue(cacheFileName, out val))
             {
-                Debug.Log(string.Format("Parts list has no {0}", fileName));
-                return false;
+                FileCacheResult = false;
+                Debug.Log(string.Format("Parts list has no {0}", cacheFileName));
+				yield break;
             }
 
-            var ldPartsPath = Path.Combine(Application.streamingAssetsPath, "LdParts");
+			var ldPartsPath = Path.Combine(Application.streamingAssetsPath, "LdParts");
             var filePath = Path.Combine(ldPartsPath, val);
 
-            if (!File.Exists(filePath))
+			yield return StartCoroutine ("LoadFile", filePath);
+            if (!fileLoadResult)
             {
-                Debug.Log(string.Format("File does not exists: {0}", filePath));
-                return false;
+                FileCacheResult = false;
+                yield break;
+            }
+            while (readString.Length == 0)
+                yield return null;
+
+            string[] readText = readString.Split(
+				Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+            if (!ExtractSubFileNames(readText, ref localSubFileNames))
+            {
+                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
+                FileCacheResult = false;
+                yield break;
             }
 
-            string[] readText = File.ReadAllLines(filePath);
-            if (!ExtractSubFileNames(readText, ref localSubFileNames))
-                return false;
-
-            fileCache.Add(fileName.ToLower(), new FileLines(val, readText));
+            fileCache.Add(cacheFileName, new FileLines(val, readText));
         }
 
         if (localSubFileNames.Count != 0)
             subFileNames.AddRange(localSubFileNames);
 
-        return true;
+        FileCacheResult = true;
     }
 
     private bool ExtractModelName(string line, ref string modelName)
@@ -522,15 +615,16 @@ public class LdModelLoader
             modelName += words[i];
         }
 
-        modelName = modelName.ToLower();
+        modelName.Replace(@"\", @"/").Trim();
 
         return true;
     }
 
     private string LoadLDRFiles(string[] readText)
     {
-        string mainModelName = "";
-        string modelName = "";
+		string mainModelName = string.Empty;
+		string modelName = string.Empty;
+        string cacheModelName = string.Empty;
 
         fileCache.Clear();
 
@@ -538,67 +632,90 @@ public class LdModelLoader
         {
             if (ExtractModelName(readText[i], ref modelName))
             {
+                cacheModelName = modelName.Replace(@"\", @"/").ToLower();
+
                 if (mainModelName.Length == 0)
                     mainModelName = modelName;
 
-                fileCache.Add(modelName, new FileLines());
+                fileCache.Add(cacheModelName, new FileLines());
+                Debug.Log(string.Format("Add ldr model into file cache: {0}", cacheModelName));
             }
 
             if (modelName != null)
-                fileCache[modelName].cache.Add(readText[i]);
+                fileCache[cacheModelName].cache.Add(readText[i]);
         }
+
+        Debug.Log(string.Format("File cache size after adding ldr files: {0}", fileCache.Count.ToString()));
 
         return mainModelName;
     }
 
-    public bool LoadMPDFile(string fileName, out string mainModelName)
+	IEnumerator LoadMPDFile(string fileName)
     {
-        mainModelName = "";
+		mainModelName = string.Empty;
 
         string ext = Path.GetExtension(fileName);
-        if (ext.Equals(LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
-        {
-            var ModelPath = Path.Combine(Application.streamingAssetsPath, "LdModels");
-            var filePath = Path.Combine(ModelPath, fileName);
+		if (ext.Equals (LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase)) 
+		{
+			var ModelPath = Path.Combine (Application.streamingAssetsPath, "LdModels");
+			var filePath = Path.Combine (ModelPath, fileName);
 
-            if (!File.Exists(filePath))
-            {
-                Debug.Log(string.Format("File does not exists: {0}", filePath));
-                return false;
-            }
+			yield return StartCoroutine ("LoadFile", filePath);
+            if (!fileLoadResult)
+                yield break;
+            while (readString.Length == 0)
+                yield return null;
 
-            string[] readText = File.ReadAllLines(filePath);
-            mainModelName = LoadLDRFiles(readText);
+            string[] readText = readString.Split (
+				Environment.NewLine.ToCharArray (), StringSplitOptions.RemoveEmptyEntries);
 
-            List<string> subFileNames = new List<string>();
-            subFileNames.Add(mainModelName);
+			mainModelName = LoadLDRFiles (readText);
+			if (mainModelName != string.Empty) 
+			{
+				subFileNames = new List<string> ();
+				subFileNames.Add (mainModelName);
 
-            while (subFileNames.Count > 0)
-            {
-                string fname = subFileNames[0];
-                subFileNames.RemoveAt(0);
+				while (subFileNames.Count > 0) 
+				{
+					string fname = subFileNames [0];
+					subFileNames.RemoveAt (0);
 
-                if (!LoadCacheFiles(fname, ref subFileNames))
-                    return false;
-            }
+					yield return StartCoroutine ("LoadCacheFiles", fname);
+                    if (!FileCacheResult)
+                    {
+                        Debug.Log(string.Format("File caching failed: {0}", fname));
+                        yield break;
+                    }
+				}
 
-            return true;
+                Debug.Log(string.Format("File cache is ready: {0}", fileCache.Count.ToString()));
+			}
         }
-
-        return false;
     }
 
-    public BrickMesh Load(string fileName)
+    IEnumerator LoadMainModel(string fileName)
     {
-        string mainModelName;
+        yield return StartCoroutine ("LoadMPDFile", fileName);
 
-        if (LoadMPDFile(fileName, out mainModelName))
-        {
-            BrickMesh brickMesh = new BrickMesh(fileName);
-            if (ParseModel(mainModelName, ref brickMesh, Matrix4x4.identity))
-                return brickMesh;
+        if (FileCacheResult) {
+            model = new BrickMesh (fileName);
+            if (!ParseModel(mainModelName, ref model, Matrix4x4.identity))
+                yield break;
+
+            isModelReady = true;
         }
+    }
 
-        return null;
+    public void Initialize()
+    {
+        isInitialized = false;
+        isModelReady = false;
+
+        StartCoroutine("LoadPartsPathFile");
+    }
+
+    public void Load(string fileName)
+    {
+        StartCoroutine ("LoadMainModel", fileName);
     }
 }
