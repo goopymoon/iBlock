@@ -33,36 +33,34 @@ public class LogConsole : MonoBehaviour
     };
 
     const int margin = 20;
+    Rect windowRect = new Rect(margin, margin, Screen.width - (margin * 2), Screen.height - (margin * 2));
+    Rect titleBarRect = new Rect(0, 0, 10000, 20);
+    GUIContent clearLabel = new GUIContent("Clear", "Clear the contents of the console.");
+    GUIContent collapseLabel = new GUIContent("Collapse", "Hide repeated messages.");
+    GUIContent closeLabel = new GUIContent("Close", "Close console.");
 
-	Rect windowRect = new Rect(margin, margin, Screen.width - (margin * 2), Screen.height - (margin * 2));
-	Rect titleBarRect = new Rect(0, 0, 10000, 20);
-	GUIContent clearLabel = new GUIContent("Clear", "Clear the contents of the console.");
-	GUIContent collapseLabel = new GUIContent("Collapse", "Hide repeated messages.");
+    void OnEnable ()
+    {
+	    Application.logMessageReceived += HandleLog;
+    }
 
-	void OnEnable ()
+    void OnDisable ()
+    {
+	    Application.logMessageReceived -= HandleLog;
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(toggleKey))
+            show = !show;
+    }
+
+    void OnGUI ()
 	{
-		Application.logMessageReceived += HandleLog;
-	}
+		if (!show)
+            return;
 
-	void OnDisable ()
-	{
-		Application.logMessageReceived -= HandleLog;
-	}
-
-	void Update ()
-	{
-		if (Input.GetKeyDown(toggleKey)) {
-			show = !show;
-		}
-	}
-
-	void OnGUI ()
-	{
-		if (!show) {
-			return;
-		}
-
-		windowRect = GUILayout.Window(123456, windowRect, ConsoleWindow, "Console");
+        windowRect = GUILayout.Window(123456, windowRect, ConsoleWindow, "Console");
 	}
 
 	/// <summary>
@@ -74,20 +72,18 @@ public class LogConsole : MonoBehaviour
 		scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
 		// Iterate through the recorded logs.
-		for (int i = 0; i < logs.Count; i++) {
+		for (int i = 0; i < logs.Count; i++)
+        {
 			var log = logs[i];
 
 			// Combine identical messages if collapse option is chosen.
 			if (collapse) {
 				var messageSameAsPrevious = i > 0 && log.message == logs[i - 1].message;
-
-				if (messageSameAsPrevious) {
+				if (messageSameAsPrevious)
 					continue;
-				}
 			}
 
-            //GUI.contentColor = logTypeColors[log.type];
-            GUI.contentColor = Color.white;
+            GUI.contentColor = logTypeColors[log.type];
 			GUILayout.Label(log.message);
 		}
 
@@ -97,9 +93,10 @@ public class LogConsole : MonoBehaviour
 
 		GUILayout.BeginHorizontal();
 
-		if (GUILayout.Button(clearLabel)) {
+		if (GUILayout.Button(clearLabel))
 			logs.Clear();
-		}
+        else if (GUILayout.Button(closeLabel))
+            show = !show;
 
 		collapse = GUILayout.Toggle(collapse, collapseLabel, GUILayout.ExpandWidth(false));
 
@@ -109,18 +106,9 @@ public class LogConsole : MonoBehaviour
 		GUI.DragWindow(titleBarRect);
 	}
 
-	/// <summary>
-	/// Records a log from the log callback.
-	/// </summary>
-	/// <param name="message">Message.</param>
-	/// <param name="stackTrace">Trace of where the message came from.</param>
-	/// <param name="type">Type of message (error, exception, warning, assert).</param>
-	void HandleLog (string message, string stackTrace, LogType type)
-	{
-		logs.Add(new Log() {
-			message = message,
-			stackTrace = stackTrace,
-			type = type,
-		});
-	}
+    void HandleLog (string message, string stackTrace, LogType type)
+    {
+	    logs.Add(new Log() { message = message,
+		    stackTrace = stackTrace, type = type, });
+    }
 }

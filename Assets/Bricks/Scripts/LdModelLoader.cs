@@ -112,7 +112,7 @@ public class LdModelLoader : MonoBehaviour
 
         readString = Regex.Replace(readString, @"\r\n?|\n", Environment.NewLine);
 
-        Debug.Log(string.Format("{0}: loaded string length {1}", filePath, readString.Length));
+        //Debug.Log(string.Format("{0}: loaded string length {1}", filePath, readString.Length));
     }
 		
 	IEnumerator LoadPartsPathFile()
@@ -638,14 +638,14 @@ public class LdModelLoader : MonoBehaviour
                     mainModelName = modelName;
 
                 fileCache.Add(cacheModelName, new FileLines());
-                Debug.Log(string.Format("Add ldr model into file cache: {0}", cacheModelName));
+                //Debug.Log(string.Format("Add ldr model into file cache: {0}", cacheModelName));
             }
 
             if (modelName != null)
                 fileCache[cacheModelName].cache.Add(readText[i]);
         }
 
-        Debug.Log(string.Format("File cache size after adding ldr files: {0}", fileCache.Count.ToString()));
+        //Debug.Log(string.Format("File cache size after adding ldr files: {0}", fileCache.Count.ToString()));
 
         return mainModelName;
     }

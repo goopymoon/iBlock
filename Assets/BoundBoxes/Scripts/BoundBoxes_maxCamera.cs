@@ -123,7 +123,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
     {
         float pinchDistanceDelta = 0;
 
-        if (Input.touchCount == 3)
+        if (Input.touchCount == 1)
         {
             Touch touch = Input.touches[0];
 
@@ -299,7 +299,7 @@ public class BoundBoxes_maxCamera : MonoBehaviour
 	{
 		float dragSpeed = Time.deltaTime * panSpeed;
 
-		while (Input.touchCount == 3)
+		while (Input.touchCount == 1)
 		{	
 			var translation = startingHit - hitPoint;
 
