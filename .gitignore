@@ -6,7 +6,8 @@ Temp/
 obj/
 Build
 Library/
-*.apk
+android/
+webgl/
    
 # ===================================== #
 # Visual Studio / MonoDevelop generated #

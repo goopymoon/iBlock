@@ -39,6 +39,15 @@ public class BrickMaterial : MonoBehaviour
         }
     }
 
+    public Material GetMaterial(MatType matType)
+    {
+        Material temp;
+        if (_customeMaterial.TryGetValue(matType, out temp))
+            return temp;
+        else
+            return _customeMaterial[MatType.DEFAUTL];
+    }
+
     public void Initialize()
     {
         _materialPath.Clear();
@@ -62,14 +71,7 @@ public class BrickMaterial : MonoBehaviour
                 Debug.Assert(temp, "Cannot load material " + _materialPath[i]);
             }
         }
-    }
 
-    public Material GetMaterial(MatType matType)
-    {
-        Material temp;
-        if (_customeMaterial.TryGetValue(matType, out temp))
-            return temp;
-        else
-            return _customeMaterial[MatType.DEFAUTL];
+        Debug.Log(string.Format("Materials are ready."));
     }
 }

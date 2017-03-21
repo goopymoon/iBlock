@@ -59,36 +59,24 @@ public class BrickGenerator : MonoBehaviour
         }
     }
 
-	IEnumerator LoadModel()
-    {
-		while (!LdColorTable.Instance.isReady)
-			yield return null;
-
-		while(!LdModelLoader.Instance.isInitialized)
-			yield return null;
-
-		LdModelLoader.Instance.Load(modelFileName);
-
-		while(!LdModelLoader.Instance.isModelReady)
-            yield return null;
-
-		var go = CreateMesh(LdModelLoader.Instance.model, transform);
-
-		InitCameraZoomRange(go);
-		SnapToTerrain(go);
-    }
-
-    private void Awake()
+    IEnumerator LoadModel()
     {
         BrickMaterial.Instance.Initialize();
+
+        yield return StartCoroutine(LdColorTable.Instance.Initialize());
+
+        yield return StartCoroutine(GetComponent<LdModelLoader>().LoadPartsPathFile());
+        yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName));
+
+        var go = CreateMesh(GetComponent<LdModelLoader>().model, transform);
+
+        InitCameraZoomRange(go);
+        SnapToTerrain(go);
     }
 
     // Use this for initialization
     void Start ()
     {
-        LdColorTable.Instance.Initialize();
-        LdModelLoader.Instance.Initialize();
-
         StartCoroutine("LoadModel");
     }
 
