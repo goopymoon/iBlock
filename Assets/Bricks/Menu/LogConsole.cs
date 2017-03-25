@@ -18,7 +18,7 @@ public class LogConsole : MonoBehaviour
 
 	List<Log> logs = new List<Log>();
 	Vector2 scrollPosition;
-	bool show = true;
+	bool show = false;
 	bool collapse;
 
     // Visual elements:
@@ -32,12 +32,17 @@ public class LogConsole : MonoBehaviour
         { LogType.Warning, Color.yellow },
     };
 
-    const int margin = 20;
+    const int margin = 200;
     Rect windowRect = new Rect(margin, margin, Screen.width - (margin * 2), Screen.height - (margin * 2));
     Rect titleBarRect = new Rect(0, 0, 10000, 20);
     GUIContent clearLabel = new GUIContent("Clear", "Clear the contents of the console.");
     GUIContent collapseLabel = new GUIContent("Collapse", "Hide repeated messages.");
     GUIContent closeLabel = new GUIContent("Close", "Close console.");
+
+    public void Toggle()
+    {
+        show = !show;
+    }
 
     void OnEnable ()
     {

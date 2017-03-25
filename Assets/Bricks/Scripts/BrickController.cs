@@ -62,7 +62,7 @@ public class BrickController : MonoBehaviour
         }
     }
 
-    void StartStage()
+    public void StartStage()
     {
         SetOBBVisibility(false);
         SetActiveState(false);
@@ -76,7 +76,7 @@ public class BrickController : MonoBehaviour
         }
     }
 
-    void EndStage()
+    public void EndStage()
     {
         SetOBBVisibility(false);
         SetActiveState(true);
@@ -84,7 +84,7 @@ public class BrickController : MonoBehaviour
         curBrick = null;
     }
 
-    void NextStage()
+    public void NextStage()
     {
         if (curBrick == null)
             return;
@@ -106,7 +106,7 @@ public class BrickController : MonoBehaviour
         }
     }
 
-    void PreviousStage()
+    public void PreviousStage()
     {
         if (curBrick == null)
         {
@@ -128,7 +128,7 @@ public class BrickController : MonoBehaviour
         }
     }
 
-    private void ToggleCompseMode()
+    public void ToggleCompseMode()
     {
         if (controlMode == eControlMode.CM_COMPOSE)
             controlMode = eControlMode.CM_SHOW;
