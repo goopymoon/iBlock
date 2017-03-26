@@ -18,7 +18,7 @@ public class LogConsole : MonoBehaviour
 
 	List<Log> logs = new List<Log>();
 	Vector2 scrollPosition;
-	bool show = false;
+	bool show = true;
 	bool collapse;
 
     // Visual elements:

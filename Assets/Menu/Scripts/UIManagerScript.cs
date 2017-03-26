@@ -36,4 +36,9 @@ public class UIManagerScript : MonoBehaviour
         contentPanel.SetBool("isHidden", !isHidden);
 		gearImage.SetBool("isHidden", !isHidden);
     }
+
+    public void CloseApp()
+    {
+        Application.Quit();
+    }
 }
