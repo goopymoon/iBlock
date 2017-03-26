@@ -173,6 +173,14 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         }
     }
 
+    void ToggleBoundBoxes()
+    {
+        drawFlag = !drawFlag;
+        isSelected = drawFlag;
+
+        DrawBoundBoxes(drawFlag);
+    }
+
     public void SelectBound(bool flag)
     {
         isSelected = flag;
@@ -199,9 +207,7 @@ public class BoundBoxes_BoundBox : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.B))
         {
-            drawFlag = !drawFlag;
-            isSelected = drawFlag;
-            DrawBoundBoxes(drawFlag);
+            ToggleBoundBoxes();
         }
     }
 }
