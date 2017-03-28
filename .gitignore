@@ -5,12 +5,9 @@
 /[Bb]uilds/
 
 /Assets/AssetStoreTools*
-/Assets/StreamingAssets/LdParts/*.meta
-/Assets/StreamingAssets/LdParts/p/*.meta
-/Assets/StreamingAssets/LdParts/p/8/*.meta
-/Assets/StreamingAssets/LdParts/p/48/*.meta
-/Assets/StreamingAssets/LdParts/parts/*.meta
-/Assets/StreamingAssets/LdParts/parts/s/*.meta
+
+# meta files in the streaming data folder
+/Assets/StreamingAssets/**/*.meta
 
 # Visual Studio 2015 cache directory
 /.vs/
@@ -40,8 +37,6 @@ sysinfo.txt
 *.apk
 *.unitypackage
 
-# ============== #
-# Screen capture #
-# ============== #
+# Screen capture
 iblock_screenshot.png
 
