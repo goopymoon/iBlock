@@ -11,7 +11,6 @@ public class BrickController : MonoBehaviour
     GameObject lastBrick = null;
 
     public VirtualJoyStick joyStickLeft;
-    public VirtualJoyStick joyStickRight;
 
     private const float brickMoveSpeed = 2.0f;
     private Vector3 destination;
@@ -163,7 +162,7 @@ public class BrickController : MonoBehaviour
         Vector3 brickPos = curBrick.transform.position;
 
         var translation = destination - brickPos;
-        GetGridAlignedDelta(ref translation);
+        //GetGridAlignedDelta(ref translation);
 
         Vector3 destPos = brickPos + translation;
 
