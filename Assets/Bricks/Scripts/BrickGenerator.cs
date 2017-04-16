@@ -35,7 +35,7 @@ public class BrickGenerator : MonoBehaviour
     private void InitCameraZoomRange(GameObject go)
     {
         Bounds aabb = go.GetComponent<Brick>().AABB;
-        var mCameraController = Camera.main.GetComponent<BoundBoxes_maxCamera>();
+        var mCameraController = Camera.main.GetComponent<TrackballCamera>();
 
         mCameraController.minDistance = Math.Max(aabb.extents.magnitude / 10, 1);
         mCameraController.maxDistance = Math.Max(aabb.extents.magnitude * 2, 5);
