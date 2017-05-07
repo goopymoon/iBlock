@@ -37,8 +37,8 @@ public class BrickGenerator : MonoBehaviour
         Bounds aabb = go.GetComponent<Brick>().AABB;
         var mCameraController = Camera.main.GetComponent<TrackballCamera>();
 
-        mCameraController.minDistance = Math.Max(aabb.extents.magnitude / 10, 1);
-        mCameraController.maxDistance = Math.Max(aabb.extents.magnitude * 2, 5);
+        //mCameraController.minDistance = Math.Max(aabb.extents.magnitude / 10, 1);
+        //mCameraController.maxDistance = Math.Max(aabb.extents.magnitude * 2, 5);
     }
 
     private void SnapToTerrain(GameObject go)

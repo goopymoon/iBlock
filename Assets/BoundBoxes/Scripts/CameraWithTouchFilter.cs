@@ -21,7 +21,7 @@ public class CameraWithTouchFilter : MonoBehaviour {
         return tempRaycastResults.Count > 0;
     }
 
-    protected void CheckTouchOperation()
+    protected bool CheckTouchOperation()
     {
         if (Input.touchCount > 0)
         {
@@ -36,10 +36,7 @@ public class CameraWithTouchFilter : MonoBehaviour {
         {
             touchOperation = false;
         }
-    }
 
-    public bool IsTouchAvailable()
-    {
         return touchOperation;
     }
 }
