@@ -5,13 +5,18 @@ public class TrackballCamera : CameraWithTouchFilter
 {
     class PivotInfo
     {
+        public enum SelectMode
+        {
+            NA,
+            SELECTED,
+            CONFIRMED,
+        };
+
         const float pivotPickInterval = 0.7f;
 
         // current pivot;
         public Vector3 pivotPos;
-
-        // under moving pivot
-        public bool movePivot;
+        public SelectMode mode { get; set; }
 
         // pivot candidate
         public GameObject pickedObj;
@@ -29,12 +34,7 @@ public class TrackballCamera : CameraWithTouchFilter
         public void Clear()
         {
             pickedObj = null;
-            movePivot = false;
-        }
-
-        public bool IsMovingToCandidate()
-        {
-            return movePivot;
+            mode = SelectMode.NA;
         }
 
         public float GetPivotDistanceToMove()
@@ -42,27 +42,46 @@ public class TrackballCamera : CameraWithTouchFilter
             return pickedObj ? Vector3.Distance(pickedObj.transform.position, pivotPos) : 0.0f;
         }
 
-        public void SetPivotCandidate(GameObject obj, float curTime)
+        public void SetPivotCandidate(GameObject obj, float curTime, SelectMode mode_)
         {
             pickedObj = obj;
             pickedTime = curTime;
+            mode = mode_;
         }
 
         public void SelectPivotCandidate(GameObject obj)
         {
             float curTime = Time.time;
 
-            if (!movePivot)
+            switch(mode)
             {
-                if (pickedObj == null || pickedObj != obj || (curTime - pickedTime > pivotPickInterval))
-                    SetPivotCandidate(obj, curTime);
-                else
-                    movePivot = true;
-            }
-            else
-            {
-                SetPivotCandidate(obj, curTime);
-                movePivot = false;
+                case SelectMode.NA:
+                    Debug.Assert(pickedObj == null, "PickObj must be null.");
+                    SetPivotCandidate(obj, curTime, SelectMode.SELECTED);
+                    break;
+                case SelectMode.SELECTED:
+                    Debug.Assert(pickedObj != null, "PickObj must not be null.");
+                    if (pickedObj == obj)
+                    {
+                        if (curTime - pickedTime < pivotPickInterval)
+                        {
+                            SetPivotCandidate(obj, curTime, SelectMode.CONFIRMED);
+                        }
+                        else
+                        {
+                            Debug.Log(string.Format("{0}: {1} sec", pickedObj.ToString(), curTime - pickedTime));
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log(string.Format("{0} != {1}", pickedObj.ToString(), obj.ToString()));
+                        Clear();
+                    }
+                    break;
+                case SelectMode.CONFIRMED:
+                default:
+                    SetPivotCandidate(obj, curTime, SelectMode.SELECTED);
+                    break;
             }
         }
 
@@ -70,6 +89,87 @@ public class TrackballCamera : CameraWithTouchFilter
         {
             var vecPos = (pickedObj.transform.position - pivotPos).normalized * dist;
             pivotPos = pivotPos + vecPos;
+        }
+    }
+
+    class RotationInfo
+    {
+        public enum RotMode
+        {
+            IDLE,
+            PREPARED,
+            ROTATING,
+        };
+
+        const float virtualTrackballDistance = 0.25f;
+        const float minPitchInDegree = -80.0f;
+        const float aboveMinY = 0.8f;
+
+        public Vector2? lastTouchPosition { get; private set; }
+        public RotMode mode { get; private set; }
+
+        public RotationInfo()
+        {
+            Clear();
+        }
+
+        public void Clear()
+        {
+            lastTouchPosition = null;
+            mode = RotMode.IDLE;
+        }
+
+        public void PrepareRotation(Vector2 pos)
+        {
+            if (mode != RotMode.IDLE) return;
+
+            UpdateRot(pos);
+            mode = RotMode.PREPARED;
+        }
+
+        public void TriggerRotation()
+        {
+            if (mode != RotMode.PREPARED) return;
+
+            mode = RotMode.ROTATING;
+        }
+
+        public void UpdateRot(Vector2 pos)
+        {
+            lastTouchPosition = pos;
+        }
+
+        float AdjustPitch(Vector3 candPos, Vector3 pivotPos, float dist, float minAngle, float maxAngle)
+        {
+            Plane basePlaine = new Plane(Vector3.up, candPos);
+
+            float height = basePlaine.GetDistanceToPoint(pivotPos);
+            float angle = Mathf.Rad2Deg * Mathf.Asin(height / dist);
+            float delta = (angle < minAngle) ? (angle - minAngle) : (angle > maxAngle) ? (maxAngle - angle) : 0;
+
+            return delta;
+        }
+
+        public Quaternion FigureOutAxisAngleRotation(Vector3 pivotPos, Vector3 vecPos, Vector2 curTouch)
+        {
+            if (!lastTouchPosition.HasValue || lastTouchPosition == curTouch)
+                return Quaternion.identity;
+
+            Vector3 p1 = Camera.main.ScreenToWorldPoint(new Vector3(lastTouchPosition.Value.x, lastTouchPosition.Value.y, Camera.main.nearClipPlane));
+            Vector3 p2 = Camera.main.ScreenToWorldPoint(new Vector3(curTouch.x, curTouch.y, Camera.main.nearClipPlane));
+            Vector3 axisOfRotation = Vector3.Cross(p2, p1);
+
+            float twist = (p2 - p1).magnitude / (2.0f * virtualTrackballDistance);
+            float phi = Mathf.Rad2Deg * Mathf.Asin(Mathf.Clamp(twist, -1.0f, 1.0f));
+            Quaternion rotation = Quaternion.AngleAxis(phi, axisOfRotation);
+
+            Vector3 candPos = rotation * vecPos + pivotPos;
+            float dist = Vector3.Distance(candPos, pivotPos);
+
+            float maxPitchInDegree = Mathf.Rad2Deg * Mathf.Asin((pivotPos.y - aboveMinY) / dist);
+            phi += AdjustPitch(candPos, pivotPos, dist, minPitchInDegree, maxPitchInDegree);
+
+            return Quaternion.AngleAxis(phi, axisOfRotation);
         }
     }
 
@@ -127,83 +227,12 @@ public class TrackballCamera : CameraWithTouchFilter
         }
     }
 
-    class RotationInfo
-    {
-        const float virtualTrackballDistance = 0.25f;
-        const float minPitchInDegree = -80.0f;
-        const float aboveMinY = 0.8f;
-
-        Vector2? lastTouchPosition = null;
-
-        public void Clear()
-        {
-            lastTouchPosition = null;
-        }
-
-        public void PrepareRot(Vector2 pos)
-        {
-            lastTouchPosition = pos;
-        }
-
-        public bool CanRot()
-        {
-            return lastTouchPosition.HasValue;
-        }
-
-        public void UpdateRot(Vector2 pos)
-        {
-            lastTouchPosition = pos;
-        }
-
-        public bool TryGetLastTouchPosition(out Vector2 val)
-        {
-            if (CanRot())
-            {
-                val = lastTouchPosition.Value;
-                return true;
-            }
-            else
-            {
-                val = Vector2.zero;
-                return false;
-            }
-        }
-
-        float AdjustPitch(Vector3 candPos, Vector3 pivotPos, float dist, float minAngle, float maxAngle)
-        {
-            Plane basePlaine = new Plane(Vector3.up, candPos);
-
-            float height = basePlaine.GetDistanceToPoint(pivotPos);
-            float angle = Mathf.Rad2Deg * Mathf.Asin(height / dist);
-            float delta = (angle < minAngle) ? (angle - minAngle) : (angle > maxAngle) ? (maxAngle - angle) : 0;
-
-            return delta;
-        }
-
-        public Quaternion CalculateAngle(Vector3 pivotPos, Vector3 vecPos, Vector3 p1, Vector3 p2)
-        {
-            Vector3 axisOfRotation = Vector3.Cross(p1, p2);
-
-            float twist = (p2 - p1).magnitude / (2.0f * virtualTrackballDistance);
-            float phi = Mathf.Rad2Deg * Mathf.Asin(Mathf.Clamp(twist, -1.0f, 1.0f));
-            Quaternion rotation = Quaternion.AngleAxis(phi, axisOfRotation);
-
-            Vector3 candPos = rotation * vecPos + pivotPos;
-            float dist = Vector3.Distance(candPos, pivotPos);
-
-            float maxPitchInDegree = Mathf.Rad2Deg * Mathf.Asin((pivotPos.y - aboveMinY) / dist);
-            phi += AdjustPitch(candPos, pivotPos, dist, minPitchInDegree, maxPitchInDegree);
-
-            return Quaternion.AngleAxis(phi, axisOfRotation);
-        }
-    }
-
     public GameObject terrainMesh;
     public Material lineMaterial;
 
     private PivotInfo pivotInfo;
-    private ZoomInfo zoomInfo;
     private RotationInfo rotInfo;
+    private ZoomInfo zoomInfo;
 
     void Start()
     {
@@ -227,34 +256,19 @@ public class TrackballCamera : CameraWithTouchFilter
         }
     }
 
-    Quaternion FigureOutAxisAngleRotation(Vector3 pivotPos, Vector3 vecPos, Vector3 lastTouch, Vector3 curTouch)
+    void Rotate(Touch touch1)
     {
-        if (lastTouch == curTouch)
-            return Quaternion.identity;
+        if (rotInfo.mode == RotationInfo.RotMode.ROTATING)
+        {
+            var startPos = (this.transform.position - pivotInfo.pivotPos).normalized * zoomInfo.curDistance;
+            var rotation = rotInfo.FigureOutAxisAngleRotation(pivotInfo.pivotPos, startPos, touch1.position);
+            var position = rotation * startPos + pivotInfo.pivotPos;
 
-        Vector3 near = new Vector3(0, 0, Camera.main.nearClipPlane);
-        Vector3 p1 = Camera.main.ScreenToWorldPoint(curTouch + near);
-        Vector3 p2 = Camera.main.ScreenToWorldPoint(lastTouch + near);
+            this.transform.position = position;
+            this.transform.LookAt(pivotInfo.pivotPos);
 
-        return rotInfo.CalculateAngle(pivotPos, vecPos, p1, p2);
-    }
-
-    IEnumerator Rotate(Touch touch1)
-    {
-        Vector2 lastPos;
-        if (!rotInfo.TryGetLastTouchPosition(out lastPos))
-            yield break;
-
-        // Rotate
-        var startPos = (this.transform.position - pivotInfo.pivotPos).normalized * zoomInfo.curDistance;
-        var rotation = FigureOutAxisAngleRotation(pivotInfo.pivotPos, startPos, lastPos, touch1.position);
-        var position = rotation * startPos + pivotInfo.pivotPos;
-
-        this.transform.position = position;
-        this.transform.LookAt(pivotInfo.pivotPos);
-
-        // Update last touch position
-        rotInfo.UpdateRot(touch1.position);
+            rotInfo.UpdateRot(touch1.position);
+        }
     }
 
     IEnumerator RefreshPivot()
@@ -292,12 +306,12 @@ public class TrackballCamera : CameraWithTouchFilter
 
     void OnPostRender()
     {
-        Vector2 pos;
-
-        if (rotInfo.TryGetLastTouchPosition(out pos))
+        if (rotInfo.mode == RotationInfo.RotMode.ROTATING)
         {
             const float radius = 100;
             const int delta = 10;
+
+            Vector2 pos = rotInfo.lastTouchPosition.Value;
 
             GL.PushMatrix();
             GL.Begin(GL.LINES);
@@ -323,7 +337,6 @@ public class TrackballCamera : CameraWithTouchFilter
         {
             rotInfo.Clear();
             pivotInfo.Clear();
-
             return;
         }
 
@@ -333,16 +346,24 @@ public class TrackballCamera : CameraWithTouchFilter
 
             if (touch1.phase == TouchPhase.Began)
             {
-                rotInfo.PrepareRot(touch1.position);
-
                 GameObject obj = GetPickedBrick(touch1);
                 if (obj)
                     pivotInfo.SelectPivotCandidate(obj);
+
+                if (pivotInfo.mode != PivotInfo.SelectMode.CONFIRMED)
+                    rotInfo.PrepareRotation(touch1.position);
+            }
+            else if (touch1.phase == TouchPhase.Stationary)
+            {
+                rotInfo.TriggerRotation();
             }
             else if (touch1.phase == TouchPhase.Moved)
             {
-                if (rotInfo.CanRot())
-                    StartCoroutine(Rotate(touch1));
+                Rotate(touch1);
+            }
+            else if (touch1.phase == TouchPhase.Ended)
+            {
+                rotInfo.Clear();
             }
         }
         else if (Input.touchCount == 2)
@@ -358,7 +379,7 @@ public class TrackballCamera : CameraWithTouchFilter
                 ZoomInOut(touch1, touch2);
         }
 
-        if (pivotInfo.IsMovingToCandidate())
+        if (pivotInfo.mode == PivotInfo.SelectMode.CONFIRMED)
             StartCoroutine(RefreshPivot());
     }
 }
