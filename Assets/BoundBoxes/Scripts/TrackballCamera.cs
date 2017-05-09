@@ -14,13 +14,11 @@ public class TrackballCamera : CameraWithTouchFilter
 
         const float pivotPickInterval = 0.7f;
 
-        // current pivot;
-        public Vector3 pivotPos;
-        public SelectMode mode { get; set; }
+        public Vector3 pivotPos { get; private set; }
+        public SelectMode mode { get; private set; }
 
-        // pivot candidate
-        public GameObject pickedObj;
-        public float pickedTime;
+        GameObject pickedObj;
+        float pickedTime;
 
         public PivotInfo()
         {
@@ -28,12 +26,12 @@ public class TrackballCamera : CameraWithTouchFilter
             go.transform.position = Vector3.zero;
             pivotPos = go.transform.position;
 
+            pickedObj = null;
             Clear();
         }
 
         public void Clear()
         {
-            pickedObj = null;
             mode = SelectMode.NA;
         }
 
@@ -44,9 +42,14 @@ public class TrackballCamera : CameraWithTouchFilter
 
         public void SetPivotCandidate(GameObject obj, float curTime, SelectMode mode_)
         {
+            if (pickedObj != null)
+                pickedObj.GetComponent<Brick>().RestoreMaterial();
+
             pickedObj = obj;
             pickedTime = curTime;
             mode = mode_;
+
+            pickedObj.GetComponent<Brick>().ShowSilhouette();
         }
 
         public void SelectPivotCandidate(GameObject obj)
@@ -269,6 +272,10 @@ public class TrackballCamera : CameraWithTouchFilter
 
             rotInfo.UpdateRot(touch1.position);
         }
+        else if (rotInfo.mode == RotationInfo.RotMode.PREPARED)
+        {
+            rotInfo.TriggerRotation();
+        }
     }
 
     IEnumerator RefreshPivot()
@@ -348,7 +355,9 @@ public class TrackballCamera : CameraWithTouchFilter
             {
                 GameObject obj = GetPickedBrick(touch1);
                 if (obj)
+                {
                     pivotInfo.SelectPivotCandidate(obj);
+                }
 
                 if (pivotInfo.mode != PivotInfo.SelectMode.CONFIRMED)
                     rotInfo.PrepareRotation(touch1.position);

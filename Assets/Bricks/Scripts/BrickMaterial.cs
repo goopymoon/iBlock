@@ -10,8 +10,9 @@ public class BrickMaterial : MonoBehaviour
         Transparent,
         OpaqueDS,
         TransparentDS,
+        Silhouette,
         BEGIN = Opaque,
-        END = TransparentDS,
+        END = Silhouette,
         DEFAUTL = BEGIN,
         DS_OFFSET = OpaqueDS - Opaque,
     };
@@ -57,6 +58,7 @@ public class BrickMaterial : MonoBehaviour
         _materialPath.Add(MatType.OpaqueDS, "Materials/OpaqueDS");
         _materialPath.Add(MatType.Transparent, "Materials/Transparent");
         _materialPath.Add(MatType.TransparentDS, "Materials/TransparentDS");
+        _materialPath.Add(MatType.Silhouette, "Materials/Silhouette");
 
         for (var i = MatType.BEGIN; i <= MatType.END; ++i)
         {

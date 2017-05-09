@@ -24,10 +24,25 @@ public class Brick : MonoBehaviour
         }
     }
 
+    struct BrickMaterialInfo
+    {
+        public BrickMaterial.MatType type;
+        public int offset;
+        public int cnt;
+
+        public BrickMaterialInfo(BrickMaterial.MatType type_, int offset_, int cnt_)
+        {
+            type = type_;
+            offset = offset_;
+            cnt = cnt_;
+        }
+    }
+
     public GameObject prevBrick { get; set; }
     public GameObject nextBrick { get; set; }
 
     private TransformData originalTd;
+    private BrickMaterialInfo originalMat;
 
     public void SetParent(Transform parent)
     {
@@ -37,6 +52,17 @@ public class Brick : MonoBehaviour
     public void RestoreTransform()
     {
         transform.Restore(originalTd);
+    }
+
+    public void RestoreMaterial()
+    {
+        ChangeMaterial(originalMat);
+    }
+
+    public void ShowSilhouette()
+    {
+        BrickMaterialInfo silhouetteMat = new BrickMaterialInfo(BrickMaterial.MatType.Silhouette, 0, 1);
+        ChangeMaterial(silhouetteMat);
     }
 
     public bool IsNearlyPositioned(Vector3 pos)
@@ -64,15 +90,15 @@ public class Brick : MonoBehaviour
         originalTd = transform.Clone();
     }
 
-    private void ChangeMaterial(BrickMaterial.MatType matType, int matIndexOffset, int matCnt)
+    private void ChangeMaterial(BrickMaterialInfo matInfo)
     {
         MeshRenderer renderer = GetComponent<MeshRenderer>();
         if (renderer == null) return;
 
-        Material[] customeMaterial = new Material[matCnt];
-        for (int i = 0; i < matCnt; ++i)
+        Material[] customeMaterial = new Material[matInfo.cnt];
+        for (int i = 0; i < matInfo.cnt; ++i)
         {
-            customeMaterial[i] = BrickMaterial.Instance.GetMaterial(matType + matIndexOffset + i);
+            customeMaterial[i] = BrickMaterial.Instance.GetMaterial(matInfo.type + matInfo.offset + i);
         }
         renderer.sharedMaterials = customeMaterial;
     }
@@ -107,14 +133,13 @@ public class Brick : MonoBehaviour
         {
             mesh.SetTriangles(opaqueTris.ToArray(), 0);
 
-            if (!brickMesh.bfcEnabled)
-                ChangeMaterial(BrickMaterial.MatType.Opaque, matIndexOffset, 1);
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 1);
         }
         else if (opaqueTris.Count == 0 && transparentTris.Count > 0)
         {
             mesh.SetTriangles(transparentTris.ToArray(), 0);
 
-            ChangeMaterial(BrickMaterial.MatType.Transparent, matIndexOffset, 1);
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Transparent, matIndexOffset, 1);
         }
         else if (opaqueTris.Count > 0 && transparentTris.Count > 0)
         {
@@ -122,8 +147,14 @@ public class Brick : MonoBehaviour
             mesh.SetTriangles(opaqueTris.ToArray(), 0);
             mesh.SetTriangles(transparentTris.ToArray(), 1);
 
-            ChangeMaterial(BrickMaterial.MatType.Opaque, matIndexOffset, 2);
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 2);
         }
+        else
+        {
+            return false;
+        }
+
+        ChangeMaterial(originalMat);
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
@@ -152,7 +183,7 @@ public class Brick : MonoBehaviour
         return aabb;
     }
 
-    private void Awake()
+    void Awake()
     {
         prevBrick = null;
         nextBrick = null;
