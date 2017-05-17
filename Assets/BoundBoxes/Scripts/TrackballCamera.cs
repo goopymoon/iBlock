@@ -43,14 +43,14 @@ public class TrackballCamera : CameraWithTouchFilter
 
         public void SetPivotCandidate(GameObject obj, float curTime, SelectMode mode_)
         {
-            if (pickedObj != null)
+            if (pickedObj)
                 pickedObj.GetComponent<Brick>().RestoreMaterial();
 
             pickedObj = obj;
             pickedTime = curTime;
             mode = mode_;
 
-            if (mode == SelectMode.CONFIRMED)
+            if (mode == SelectMode.SELECTED)
                 pickedObj.GetComponent<Brick>().ShowSilhouette();
         }
 
