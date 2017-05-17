@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class TrackballCamera : CameraWithTouchFilter
 {
@@ -49,7 +50,8 @@ public class TrackballCamera : CameraWithTouchFilter
             pickedTime = curTime;
             mode = mode_;
 
-            pickedObj.GetComponent<Brick>().ShowSilhouette();
+            if (mode == SelectMode.CONFIRMED)
+                pickedObj.GetComponent<Brick>().ShowSilhouette();
         }
 
         public void SelectPivotCandidate(GameObject obj)
@@ -302,10 +304,28 @@ public class TrackballCamera : CameraWithTouchFilter
     {
         RaycastHit[] hits = Physics.RaycastAll(Camera.main.ScreenPointToRay(touch.position));
 
+        List<GameObject> candidates = new List<GameObject>();
+        Bounds bounds = new Bounds();
+
         foreach (RaycastHit hit in hits)
         {
             if (hit.transform.gameObject != terrainMesh)
-                return hit.transform.gameObject;
+            {
+                candidates.Add(hit.transform.gameObject);
+                bounds.Encapsulate(hit.transform.gameObject.GetComponent<Brick>().AABB);
+            }
+        }
+
+        if (candidates.Count > 0)
+        {
+            APARaycastHit preciseHit;
+            APAObjectDictionary.singleton.Init(bounds, candidates);
+
+            if (APARaycast.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out preciseHit))
+            {
+                preciseHit.transform.GetComponent<Renderer>().material.color = new Color(1, 0, 0, 1);
+                return preciseHit.transform.gameObject;
+            }
         }
 
         return null;
