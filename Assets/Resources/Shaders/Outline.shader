@@ -1,4 +1,6 @@
-﻿Shader "Brick/Outline" 
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+Shader "Brick/Outline" 
 {
     Properties
     {
@@ -47,7 +49,7 @@
             v2g vert(appdata_base v)
             {
                 v2g OUT;
-                OUT.pos = mul(UNITY_MATRIX_MVP, v.vertex);
+                OUT.pos = UnityObjectToClipPos(v.vertex);
                 OUT.color = v.color;
                 OUT.uv = v.texcoord;
                 OUT.normals = v.normal;
@@ -103,7 +105,7 @@
             v2g vert(appdata_base v)
             {
                 v2g OUT;
-                OUT.pos = mul(UNITY_MATRIX_MVP, v.vertex);
+                OUT.pos = UnityObjectToClipPos(v.vertex);
                 OUT.color = v.color;
                 OUT.uv = v.texcoord;
                 OUT.normals = v.normal;

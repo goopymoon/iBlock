@@ -10,8 +10,6 @@ public class BrickController : MonoBehaviour
     GameObject curBrick = null;
     GameObject lastBrick = null;
 
-    public VirtualJoyStick joyStickLeft;
-
     private const float brickMoveSpeed = 2.0f;
     private Vector3 destination;
     private bool isMoving = false;
@@ -189,24 +187,6 @@ public class BrickController : MonoBehaviour
 
     void MoveBrick()
     {
-        if (joyStickLeft.InputDirection.x != 0 || joyStickLeft.InputDirection.y != 0)
-        {
-            isMoving = true;
-
-            Vector3 deltaPos;
-
-            deltaPos.x = joyStickLeft.InputDirection.x;
-            deltaPos.z = joyStickLeft.InputDirection.y;
-            deltaPos.y = 0;
-
-            destination += deltaPos;
-
-            StartCoroutine(DragBrick());
-        }
-        else
-        {
-            isMoving = false;
-        }
     }
 
     private bool GetBrickTargetPos(GameObject skipObj, out Vector3 pos)

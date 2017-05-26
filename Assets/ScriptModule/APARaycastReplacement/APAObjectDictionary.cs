@@ -38,7 +38,8 @@ public class APAObjectDictionary : MonoBehaviour
     void OnDestroy()
     {
 		Debug.Log("Mem Before Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
-		octree.Clear();
+        if (octree != null)
+		    octree.Clear();
 		octree = null;
 		Debug.Log("Mem After Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
 	}
@@ -110,19 +111,6 @@ public class APAObjectDictionary : MonoBehaviour
 		return triangleList.ToArray();
 	}
 		
-	void OnDrawGizmos()
-    {
-		DrawOctree(octree);
-	}
-	
-	void DrawOctree(APAOctree oct)
-    {
-		Gizmos.DrawWireCube(oct.bounds.center, oct.bounds.size);
-
-        foreach (APAOctree o in oct.m_children)
-            DrawOctree(o);
-    }
-
     public static APAOctree GetOctree()
     {
         return singleton.octree;
