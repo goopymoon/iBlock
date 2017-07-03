@@ -22,6 +22,7 @@ public class PivotInfo
     public void Clear()
     {
         Debug.Log(string.Format("Reset: {0}", pickedObj.ToString()));
+        RestoreSilhouette();
         pickedObj = null;
     }
 

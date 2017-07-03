@@ -24,7 +24,7 @@ public class RotIdle<Transition, StateID> : CameraRotState<Transition, StateID>
 
 public class RotPrepare<Transition, StateID> : CameraRotState<Transition, StateID>
 {
-    const float RotInterval = 0.7f;
+    const float RotInterval = 0.2f;
     CameraOpMgr owner;
 
     public override void Update(float dt)
@@ -45,7 +45,6 @@ public class RotPrepare<Transition, StateID> : CameraRotState<Transition, StateI
 
 public class RotRun<Transition, StateID> : CameraRotState<Transition, StateID>
 {
-    const float RotInterval = 0.7f;
     CameraOpMgr owner;
 
     public override void Update(float dt)

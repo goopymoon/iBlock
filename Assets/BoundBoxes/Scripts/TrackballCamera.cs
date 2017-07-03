@@ -87,6 +87,8 @@ public class TrackballCamera : CameraWithTouchFilter
 
     void LateUpdate()
     {
+        opMgr.Update(Time.deltaTime);
+
         if (!CheckTouchOperation())
         {
             opMgr.StopRotation();
@@ -102,7 +104,5 @@ public class TrackballCamera : CameraWithTouchFilter
         {
             opMgr.HandleTwoTouch(Input.touches[0], Input.touches[1]);
         }
-
-        opMgr.Update(Time.deltaTime);
     }
 }

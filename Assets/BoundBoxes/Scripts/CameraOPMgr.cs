@@ -216,6 +216,7 @@ public class CameraOpMgr
         {
             pivotInfo.candObj = obj;
             curPivotFsm.Advance(eCameraOpTansition.PIVOT_TOUCH);
+            return;
         }
     }
 
