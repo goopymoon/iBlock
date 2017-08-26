@@ -37,6 +37,4 @@ sysinfo.txt
 *.apk
 *.unitypackage
 
-# Screen capture
-iblock_screenshot.png
 
