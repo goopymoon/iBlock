@@ -11,12 +11,16 @@ public class PartsConverter : MonoBehaviour {
     public readonly string[] subPath = { "parts", "p" };
     public readonly string partsList = "parts.lst";
 
-    string basePath;
-    Dictionary<string, string> canonicalPathDic;
+    public GameObject brickPrefab;
+
+    private string basePath;
+    private Dictionary<string, string> canonicalPathDic;
+    private Dictionary<string, BrickMesh> partBricks;
+    private LdPartsLoader ldPartsLoader;
 
     public bool AddSearchPath(int subIndex, string filePath)
     {
-        if (!Enumerable.Range(0, subPath.Length - 1).Contains<int>(subIndex))
+        if (!Enumerable.Range(0, subPath.Length).Contains<int>(subIndex))
             return false;
 
         string name = filePath.Substring(Path.Combine(basePath, subPath[subIndex]).Length + 1);
@@ -30,7 +34,9 @@ public class PartsConverter : MonoBehaviour {
 
         var searchPath = Path.Combine(subPath[subIndex], name);
 
-        canonicalPathDic.Add(name.ToLower(), searchPath.ToLower());
+        string fname = name.Replace(@"\", @"/").ToLower();
+        string fpath = searchPath.Replace(@"\", @"/").ToLower();
+        canonicalPathDic.Add(fname, fpath);
 
         return true;
     }
@@ -55,17 +61,38 @@ public class PartsConverter : MonoBehaviour {
                     AddSearchPath(i, fileName);
             }
         }
+
+        // Print for Debugging
+        string outFile = Path.Combine(basePath, "debug.txt");
+        using (StreamWriter file = new StreamWriter(outFile))
+        {
+            foreach (KeyValuePair<string, string> entry in canonicalPathDic)
+            {
+                file.WriteLine("{0} {1}", entry.Key, entry.Value);
+            }
+        }
     }
 
     bool ConvertMesh(string fname)
     {
+        BrickMesh brickMesh;
+
+        if (!ldPartsLoader.LoadPart(out brickMesh, fname, basePath, canonicalPathDic))
+            return false;
+
+        GameObject go = (GameObject)Instantiate(brickPrefab);
+ 
+        go.name = brickMesh.brickInfo();
+        go.GetComponent<Brick>().SetParent(transform);
+        if (!go.GetComponent<Brick>().CreateMesh(brickMesh, LdConstant.LD_COLOR_MAIN, false))
+            return false;
+
+        partBricks.Add(fname, brickMesh);
         return true;
     }
 
     bool ConvertMeshes()
     {
-        canonicalPathDic.Clear();
-
         string filePath = Path.Combine(basePath, partsList);
 
         if (!File.Exists(filePath))
@@ -90,7 +117,14 @@ public class PartsConverter : MonoBehaviour {
                     continue;
                 }
 
-                ConvertMesh(partfname);
+                if (!ConvertMesh(partfname))
+                {
+                    Debug.Log(string.Format("Converting mesh failed: {0}", partfname));
+                }
+
+                // For debugging 
+                // Convert only one brick and exit
+                return true;
             }
         }
 
@@ -99,23 +133,33 @@ public class PartsConverter : MonoBehaviour {
 
     bool ConvertAllParts()
     {
+        bool ret = false;
+
         PrepareConverting();
-        return ConvertMeshes();
+        ret = ConvertMeshes();
+
+        return ret;
     }
 
     private void Awake()
     {
         basePath = Path.GetFullPath(Path.Combine(Application.dataPath, ldPartsPath));
         canonicalPathDic = new Dictionary<string, string>();
+        partBricks = new Dictionary<string, BrickMesh>();
+        ldPartsLoader = new LdPartsLoader();
+
+        ldPartsLoader.Initialize();
     }
 
     // Use this for initialization
     void Start () {
-        ConvertAllParts();
     }
 	
 	// Update is called once per frame
 	void Update () {
-		
-	}
+        if (Input.GetButtonDown("Fire1"))
+        {
+            ConvertAllParts();
+        }
+    }
 }
