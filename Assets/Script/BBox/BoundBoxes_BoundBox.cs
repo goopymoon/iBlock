@@ -51,6 +51,9 @@ public class BoundBoxes_BoundBox : MonoBehaviour
         quat = Quaternion.Euler(0f, 0f, 0f);
 
         BoxCollider[] colliders = GetComponentsInChildren<BoxCollider>();
+        if (colliders.Length == 0)
+            return false;
+
         int showLen = showChildren ? colliders.Length : 1;
 
         for (int i = 0; i < showLen; ++i)

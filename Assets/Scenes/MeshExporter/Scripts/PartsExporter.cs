@@ -1,21 +1,26 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿#if UNITY_EDITOR
 using UnityEngine;
+using UnityEditor;
+
+using System.Collections;
+using System.Collections.Generic;
 
 using System;
 using System.IO;
 using System.Linq;
 
-public class PartsConverter : MonoBehaviour {
+public class PartsExporter : MonoBehaviour {
     public readonly string ldPartsPath = "../ldraw/ldparts";
     public readonly string[] subPath = { "parts", "p" };
     public readonly string partsList = "parts.lst";
+    public readonly string partMeshOutPath = "Assets/Parts/Meshes/";
+    public readonly string partPrefabOutPath = "Assets/Parts/Prefabs/";
 
     public GameObject brickPrefab;
 
     private string basePath;
     private Dictionary<string, string> canonicalPathDic;
-    private Dictionary<string, BrickMesh> partBricks;
+    private Queue<string> partNames;
     private LdPartsLoader ldPartsLoader;
 
     public bool AddSearchPath(int subIndex, string filePath)
@@ -41,7 +46,7 @@ public class PartsConverter : MonoBehaviour {
         return true;
     }
 
-    void PrepareConverting()
+    void PrepareCanonicalPaths()
     {
         string[] fileEntries;
 
@@ -73,8 +78,68 @@ public class PartsConverter : MonoBehaviour {
         }
     }
 
-    bool ConvertMesh(string fname)
+    void PreparePartNames()
     {
+        string filePath = Path.Combine(basePath, partsList);
+
+        if (!File.Exists(filePath))
+        {
+            Debug.Log(string.Format("File does not exists: {0}", filePath));
+            return;
+        }
+
+        partNames = new Queue<string>(System.IO.File.ReadAllLines(filePath));
+    }
+
+    bool DoesAssetExist(string fname)
+    {
+        string meshName = Path.ChangeExtension(fname, ".asset");
+        string prefabName = Path.ChangeExtension(fname, ".prefab");
+
+        if (File.Exists(partMeshOutPath + meshName) && File.Exists(partPrefabOutPath + prefabName))
+        {
+            Debug.Log(string.Format("Skip {0}, {1}", meshName, prefabName));
+            return true;
+        }
+
+        return false;
+    }
+
+    bool SaveAsset(string fname, GameObject go)
+    {
+        string meshName = Path.ChangeExtension(go.name, ".asset");
+        string prefabName = Path.ChangeExtension(go.name, ".prefab");
+
+        MeshFilter mf = go.GetComponent<MeshFilter>();
+        if (mf)
+        {
+            AssetDatabase.CreateAsset(mf.sharedMesh, partMeshOutPath + meshName);
+
+            var prefab = PrefabUtility.CreateEmptyPrefab(partPrefabOutPath + prefabName);
+            PrefabUtility.ReplacePrefab(go, prefab, ReplacePrefabOptions.ConnectToPrefab);
+
+            return true;
+        }
+
+        return false;
+    }
+
+/*
+ * LDraw parts are measured in LDraw Units (LDU)
+    1 brick width/depth = 20 LDU
+    1 brick height = 24 LDU
+    1 plate height = 8 LDU
+    1 stud diameter = 12 LDU
+    1 stud height = 4 LDU
+   Real World Approximations
+    1 LDU = 1/64 in
+    1 LDU = 0.4 mm
+*/
+    bool ExportMesh(string fname)
+    {
+        if (DoesAssetExist(fname))
+            return true;
+
         BrickMesh brickMesh;
 
         if (!ldPartsLoader.LoadPart(out brickMesh, fname, basePath, canonicalPathDic))
@@ -82,29 +147,26 @@ public class PartsConverter : MonoBehaviour {
 
         GameObject go = (GameObject)Instantiate(brickPrefab);
  
-        go.name = brickMesh.brickInfo();
+        go.name = brickMesh.name;
         go.GetComponent<Brick>().SetParent(transform);
         if (!go.GetComponent<Brick>().CreateMesh(brickMesh, LdConstant.LD_COLOR_MAIN, false))
-            return false;
-
-        partBricks.Add(fname, brickMesh);
-        return true;
-    }
-
-    bool ConvertMeshes()
-    {
-        string filePath = Path.Combine(basePath, partsList);
-
-        if (!File.Exists(filePath))
         {
-            Debug.Log(string.Format("File does not exists: {0}", filePath));
+            Debug.Log(string.Format("Cannot create mesh: {0}", fname));
             return false;
         }
 
-        string[] lines = System.IO.File.ReadAllLines(filePath);
-        foreach (var line in lines)
+        bool ret = SaveAsset(fname, go);
+
+        Destroy(go);
+
+        return ret;
+    }
+
+    bool ExportMeshes()
+    {
+        while (partNames.Any())
         {
-            string[] words = line.Split(null);
+            string[] words = partNames.Dequeue().Split(null);
 
             if (words.Length > 0)
             {
@@ -117,38 +179,28 @@ public class PartsConverter : MonoBehaviour {
                     continue;
                 }
 
-                if (!ConvertMesh(partfname))
+                if (!ExportMesh(partfname))
                 {
                     Debug.Log(string.Format("Converting mesh failed: {0}", partfname));
                 }
-
-                // For debugging 
-                // Convert only one brick and exit
-                return true;
             }
         }
 
         return true;
     }
 
-    bool ConvertAllParts()
-    {
-        bool ret = false;
-
-        PrepareConverting();
-        ret = ConvertMeshes();
-
-        return ret;
-    }
-
     private void Awake()
     {
         basePath = Path.GetFullPath(Path.Combine(Application.dataPath, ldPartsPath));
         canonicalPathDic = new Dictionary<string, string>();
-        partBricks = new Dictionary<string, BrickMesh>();
         ldPartsLoader = new LdPartsLoader();
 
+        PrepareCanonicalPaths();
+        PreparePartNames();
+
         ldPartsLoader.Initialize();
+        BrickMaterial.Instance.Initialize();
+        StartCoroutine(LdColorTable.Instance.Initialize());
     }
 
     // Use this for initialization
@@ -157,9 +209,14 @@ public class PartsConverter : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+        if (!LdColorTable.Instance.IsInitialized)
+            return;
+
         if (Input.GetButtonDown("Fire1"))
         {
-            ConvertAllParts();
+            ExportMeshes();
         }
     }
 }
+#endif
+      

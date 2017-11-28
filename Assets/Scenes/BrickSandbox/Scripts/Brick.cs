@@ -160,6 +160,7 @@ public class Brick : MonoBehaviour
         mesh.RecalculateBounds();
 
         GetComponent<MeshFilter>().mesh = mesh;
+        GetComponent<MeshFilter>().sharedMesh = mesh;
 
         AddBoxCollider();
 

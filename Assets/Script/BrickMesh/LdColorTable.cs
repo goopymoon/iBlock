@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 
 public class LdColorTable : MonoBehaviour
 {
+    public bool IsInitialized { get; private set; }
+
     private readonly Color32 DEF_BRICK_COLOR = new Color32(0x7F, 0x7F, 0x7F, 0xFF);
     private Dictionary<int, Color32> _palette;
 
@@ -34,8 +36,19 @@ public class LdColorTable : MonoBehaviour
         }
     }
 
+    LdColorTable()
+    {
+        IsInitialized = false;
+    }
+
     public Color32 GetColor(int colorIndex)
     {
+        if (!IsInitialized)
+        {
+            Debug.Log("LdColorTable is not initialized");
+            return DEF_BRICK_COLOR;
+        }
+
         if (_palette.ContainsKey(colorIndex))
             return _palette[colorIndex];
         else
@@ -113,26 +126,9 @@ public class LdColorTable : MonoBehaviour
         return palette;
     }
 
-    public IEnumerator Initialize()
-    {
-		string filePath = Path.Combine(Application.streamingAssetsPath, "LDConfig.ldr");
-
-		yield return StartCoroutine ("LoadFile", filePath);
-        if (readString == string.Empty)
-            yield break;
-
-        string[] readText = readString.Split(
-            Environment.NewLine.ToCharArray(),
-            StringSplitOptions.RemoveEmptyEntries);
-
-        _palette = ParseColor(readText);
-
-        Debug.Log(string.Format("Color table is ready."));
-    }
-
     IEnumerator LoadFile(string filePath)
-	{
-		readString = string.Empty;
+    {
+        readString = string.Empty;
 
         if (filePath.Contains("://"))
         {
@@ -158,5 +154,23 @@ public class LdColorTable : MonoBehaviour
         }
 
         readString = Regex.Replace(readString, @"\r\n?|\n", Environment.NewLine);
-	}
+    }
+
+    public IEnumerator Initialize()
+    {
+		string filePath = Path.Combine(Application.streamingAssetsPath, "ldconfig.ldr");
+
+		yield return StartCoroutine ("LoadFile", filePath);
+        if (readString == string.Empty)
+            yield break;
+
+        string[] readText = readString.Split(
+            Environment.NewLine.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries);
+
+        _palette = ParseColor(readText);
+        IsInitialized = true;
+
+        Debug.Log(string.Format("Color table is ready."));
+    }
 }
