@@ -11,6 +11,7 @@ public class BrickMesh
     public bool bfcEnabled { get; set; }
     public bool invertNext { get; set; }
     public short brickColor { get; private set; }
+    public bool IsPartAsset { get; private set; }
 
     public List<Vector3> vertices { get; set; }
     public List<short> colorIndices { get; set; }
@@ -24,9 +25,10 @@ public class BrickMesh
         return string.Format("{0}:{1}: {2}", bfcEnabled, brickColor.ToString(), name);
     }
 
-    public BrickMesh(string meshName)
+    public BrickMesh(string meshName, bool isAsset=false)
     {
         name = meshName;
+        IsPartAsset = isAsset;
 
         bfcEnabled = false;
         invertNext = false;
@@ -42,6 +44,7 @@ public class BrickMesh
     public BrickMesh(BrickMesh rhs)
     {
         name = rhs.name;
+        IsPartAsset = rhs.IsPartAsset;
 
         bfcEnabled = rhs.bfcEnabled;
         invertNext = rhs.invertNext;
@@ -120,6 +123,11 @@ public class BrickMesh
     public void Optimize(float angle = BrickMeshOptimizer.SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE)
     {
         BrickMeshOptimizer.Optimize(this, angle);
+    }
+
+    public void AddChildBrick(BrickMesh child)
+    {
+        children.Add(child);
     }
 
     public void AddChildBrick(bool invert, short color, Matrix4x4 trMatrix, BrickMesh child)

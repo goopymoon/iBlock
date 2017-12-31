@@ -38,6 +38,7 @@ public class LdFileParser
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding { CCW = 0, CW };
 
+    private bool isUsingPartsAsset;
     private Dictionary<string, FileLines> fileCache;
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -170,7 +171,7 @@ public class LdFileParser
         return true;
     }
 
-    private bool ParseTriInfo(string line, ref BrickMesh brickMesh,
+    private bool ParseTriInfo(ref BrickMesh brickMesh, string line, 
         Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -218,7 +219,7 @@ public class LdFileParser
         return true;
     }
 
-    private bool ParseQuadInfo(string line, ref BrickMesh brickMesh,
+    private bool ParseQuadInfo(ref BrickMesh brickMesh, string line, 
         Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -275,7 +276,7 @@ public class LdFileParser
         return true;
     }
 
-    private bool ParseSubFileInfo(string line, ref BrickMesh brickMesh,
+    private bool ParseSubFileInfo(ref BrickMesh brickMesh, string line, 
         Matrix4x4 trMatrix, short parentColor, bool accumInvert, bool accumInvertByMatrix)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -299,38 +300,7 @@ public class LdFileParser
             accumInvertByMatrix = !accumInvertByMatrix;
 
         Matrix4x4 mAcc = trMatrix * mLocal;
-        return ParseModel(fname, ref brickMesh, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
-    }
-
-    private bool ParseModel(string fileName, ref BrickMesh parentMesh, Matrix4x4 trMatrix, 
-        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false, 
-        bool merge=true)
-    {
-        string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
-
-        FileLines val;
-        if (!fileCache.TryGetValue(cacheFileName, out val))
-        {
-            Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
-            return false;
-        }
-
-        BrickMesh subBrickMesh = null;
-        if (!ParseModel(out subBrickMesh, fileName, val.cache.ToArray(), Matrix4x4.identity))
-        {
-            return false;
-        }
-        else
-        {
-            subBrickMesh.Optimize();
-
-            if (merge)
-                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
-            else
-                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-
-            return true;
-        }
+        return TryParseModel(ref brickMesh, fname, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
     }
 
     private bool ParseModel(out BrickMesh brickMesh, string modelName, string[] readText, 
@@ -359,7 +329,7 @@ public class LdFileParser
                     ParseBFCInfo(line, ref certified, ref winding, ref invertNext);
                     break;
                 case 1:
-                    if (!ParseSubFileInfo(line, ref brickMesh, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
+                    if (!ParseSubFileInfo(ref brickMesh, line, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
                     {
                         Debug.Log(string.Format("ParseSubFileInfo failed: {0}", line));
                         return false;
@@ -367,14 +337,14 @@ public class LdFileParser
                     invertNext = false;
                     break;
                 case 3:
-                    if (!ParseTriInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
+                    if (!ParseTriInfo(ref brickMesh, line, trMatrix, parentColor, accumInvert, winding))
                     {
                         Debug.Log(string.Format("ParseTriInfo failed: {0}", line));
                         return false;
                     }
                     break;
                 case 4:
-                    if (!ParseQuadInfo(line, ref brickMesh, trMatrix, parentColor, accumInvert, winding))
+                    if (!ParseQuadInfo(ref brickMesh, line, trMatrix, parentColor, accumInvert, winding))
                     {
                         Debug.Log(string.Format("ParseQuadInfo failed: {0}", line));
                         return false;
@@ -392,10 +362,77 @@ public class LdFileParser
         return true;
     }
 
-    public bool ParseModel(out BrickMesh brickMesh, string modelName, string[] readText, Dictionary<string, FileLines> fCache,
-        Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
+    private bool IsNeedMerge(string fileName, string filePath)
     {
+        string ext = Path.GetExtension(fileName).ToLower();
+
+        if (ext == ".dat")
+        {
+            if (filePath.Length > 0)
+            {
+                string dirName = Path.GetDirectoryName(filePath);
+                return (dirName != "parts");
+            }
+            else
+            {
+                return (Path.GetDirectoryName(fileName).Length > 0);
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
+        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
+    {
+        string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
+        BrickMesh subBrickMesh = null;
+
+        FileLines val;
+        if (!fileCache.TryGetValue(cacheFileName, out val))
+        {
+            if (!isUsingPartsAsset)
+            {
+                Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
+                return false;
+            }
+            else
+            {
+                subBrickMesh = new BrickMesh(cacheFileName, true);
+                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                return true;
+            }
+        }
+
+        if (!ParseModel(out subBrickMesh, fileName, val.cache.ToArray(), Matrix4x4.identity))
+        {
+            return false;
+        }
+        else
+        {
+            if (parentMesh == null)
+                parentMesh = subBrickMesh;
+            else
+            {
+                subBrickMesh.Optimize();
+
+                bool forceMerge = !isUsingPartsAsset || IsNeedMerge(fileName, val.filePath);
+                if (forceMerge)
+                    parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
+                else
+                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+            }
+
+            return true;
+        }
+    }
+
+    public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, FileLines> fCache, Matrix4x4 trMatrix, bool usePartsAsset)
+    {
+        isUsingPartsAsset = usePartsAsset;
         fileCache = fCache;
-        return ParseModel(out brickMesh, modelName, readText, trMatrix, parentColor, accumInvert, accumInvertByMatrix);
+
+        brickMesh = null;
+        return TryParseModel(ref brickMesh, modelName, trMatrix);
     }
 }

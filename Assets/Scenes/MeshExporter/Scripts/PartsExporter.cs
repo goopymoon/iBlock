@@ -10,15 +10,16 @@ using System.IO;
 using System.Linq;
 
 public class PartsExporter : MonoBehaviour {
-    public readonly string ldPartsPath = "../ldraw/ldparts";
+    // Import path
     public readonly string[] subPath = { "parts", "p" };
-    public readonly string partsList = "parts.lst";
-    public readonly string partMeshOutPath = "Assets/Parts/Meshes/";
-    public readonly string partPrefabOutPath = "Assets/Parts/Prefabs/";
+    // Export path
+    public readonly string partMeshOutPath = "Assets/Resources/Parts/Meshes/";
+    public readonly string partPrefabOutPath = "Assets/Resources/Parts/Prefabs/";
 
     public GameObject brickPrefab;
+    public bool exportAll = false;
 
-    private string basePath;
+    private string baseImportPath;
     private Dictionary<string, string> canonicalPathDic;
     private Queue<string> partNames;
     private LdPartsLoader ldPartsLoader;
@@ -28,7 +29,7 @@ public class PartsExporter : MonoBehaviour {
         if (!Enumerable.Range(0, subPath.Length).Contains<int>(subIndex))
             return false;
 
-        string name = filePath.Substring(Path.Combine(basePath, subPath[subIndex]).Length + 1);
+        string name = filePath.Substring(Path.Combine(baseImportPath, subPath[subIndex]).Length + 1);
         string extension = Path.GetExtension(name);
 
         if (extension != ".dat")
@@ -52,7 +53,7 @@ public class PartsExporter : MonoBehaviour {
 
         for (int i = 0; i < subPath.Length; ++i)
         {
-            string partPath = Path.Combine(basePath, subPath[i]);
+            string partPath = Path.Combine(baseImportPath, subPath[i]);
 
             fileEntries = Directory.GetFiles(partPath);
             foreach (string fileName in fileEntries)
@@ -68,7 +69,7 @@ public class PartsExporter : MonoBehaviour {
         }
 
         // Print for Debugging
-        string outFile = Path.Combine(basePath, "debug.txt");
+        string outFile = Path.Combine(baseImportPath, LdConstant.PARTS_PATH_LIST_FNAME);
         using (StreamWriter file = new StreamWriter(outFile))
         {
             foreach (KeyValuePair<string, string> entry in canonicalPathDic)
@@ -80,7 +81,7 @@ public class PartsExporter : MonoBehaviour {
 
     void PreparePartNames()
     {
-        string filePath = Path.Combine(basePath, partsList);
+        string filePath = Path.Combine(baseImportPath, LdConstant.PARTS_LIST_FNAME);
 
         if (!File.Exists(filePath))
         {
@@ -138,11 +139,11 @@ public class PartsExporter : MonoBehaviour {
     bool ExportMesh(string fname)
     {
         if (DoesAssetExist(fname))
-            return true;
+            return false;
 
         BrickMesh brickMesh;
 
-        if (!ldPartsLoader.LoadPart(out brickMesh, fname, basePath, canonicalPathDic))
+        if (!ldPartsLoader.LoadPart(out brickMesh, fname, baseImportPath, canonicalPathDic))
             return false;
 
         GameObject go = (GameObject)Instantiate(brickPrefab);
@@ -155,11 +156,10 @@ public class PartsExporter : MonoBehaviour {
             return false;
         }
 
-        bool ret = SaveAsset(fname, go);
-
+        SaveAsset(fname, go);
         Destroy(go);
 
-        return ret;
+        return true;
     }
 
     bool ExportMeshes()
@@ -176,12 +176,13 @@ public class PartsExporter : MonoBehaviour {
                 if (extension.ToLower() != ".dat")
                 {
                     Debug.Log(string.Format("File extension must be .dat: {0}", partfname));
-                    continue;
                 }
-
-                if (!ExportMesh(partfname))
+                else
                 {
-                    Debug.Log(string.Format("Converting mesh failed: {0}", partfname));
+                    ExportMesh(partfname);
+
+                    if (!exportAll)
+                        return false;
                 }
             }
         }
@@ -191,7 +192,7 @@ public class PartsExporter : MonoBehaviour {
 
     private void Awake()
     {
-        basePath = Path.GetFullPath(Path.Combine(Application.dataPath, ldPartsPath));
+        baseImportPath = Path.Combine(Application.streamingAssetsPath, LdConstant.LD_PARTS_PATH);
         canonicalPathDic = new Dictionary<string, string>();
         ldPartsLoader = new LdPartsLoader();
 
@@ -200,23 +201,26 @@ public class PartsExporter : MonoBehaviour {
 
         ldPartsLoader.Initialize();
         BrickMaterial.Instance.Initialize();
-        StartCoroutine(LdColorTable.Instance.Initialize());
+    }
+
+    IEnumerator StartConvert()
+    {
+        if (!LdColorTable.Instance.IsInitialized)
+            yield return StartCoroutine(LdColorTable.Instance.Initialize());
+
+        ExportMeshes();
     }
 
     // Use this for initialization
     void Start () {
     }
-	
-	// Update is called once per frame
-	void Update () {
-        if (!LdColorTable.Instance.IsInitialized)
-            return;
 
+    // Update is called once per frame
+    void Update () {
         if (Input.GetButtonDown("Fire1"))
         {
-            ExportMeshes();
+            StartCoroutine("StartConvert");
         }
     }
 }
 #endif
-      

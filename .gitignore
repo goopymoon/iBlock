@@ -8,12 +8,13 @@
 
 # meta files in the streaming data folder
 /Assets/StreamingAssets/**/*.meta
-/Assets/Parts/Meshes/*.*
-/Assets/Parts/Prefabs/*.*
-/Assets/*.zip
-/Assets/*.zip.meta
-/ldraw/**/*.meta
-/ldraw/ldparts/debug.txt
+/Assets/StreamingAssets/**/**/*.meta
+
+# Exported parts asset
+/Assets/Resources/Parts/Meshes/
+/Assets/Resources/Parts/Prefabs/
+/Assets/Resources/*.zip
+/Assets/Resources/*.zip.meta
 
 # Visual Studio 2015 cache directory
 /.vs/

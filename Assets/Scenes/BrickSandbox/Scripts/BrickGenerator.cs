@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 using System;
+using System.IO;
 
 public class BrickGenerator : MonoBehaviour
 {
@@ -13,7 +14,23 @@ public class BrickGenerator : MonoBehaviour
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        GameObject go = (GameObject)Instantiate(brickPrefab);
+        GameObject go = null;
+
+        if (brickMesh.IsPartAsset)
+        {
+            string path = @"Parts/Prefabs/" + Path.GetFileNameWithoutExtension(brickMesh.name);
+            GameObject partObj = Resources.Load(path) as GameObject;
+            if (!partObj)
+            {
+                Debug.Log(string.Format("Cannot load {0}", path));
+                return null;
+            }
+            go = (GameObject)Instantiate(partObj);
+        }
+        else
+        {
+            go = (GameObject)Instantiate(brickPrefab);
+        }
 
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
@@ -61,11 +78,11 @@ public class BrickGenerator : MonoBehaviour
 
     IEnumerator LoadModel()
     {
-        BrickMaterial.Instance.Initialize();
+        if (!LdColorTable.Instance.IsInitialized)
+        {
+            yield return StartCoroutine(LdColorTable.Instance.Initialize());
+        }
 
-        yield return StartCoroutine(LdColorTable.Instance.Initialize());
-
-        yield return StartCoroutine(GetComponent<LdModelLoader>().LoadPartsPathFile());
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName));
 
         var go = CreateMesh(GetComponent<LdModelLoader>().model, transform);
@@ -74,10 +91,15 @@ public class BrickGenerator : MonoBehaviour
         SnapToTerrain(go);
     }
 
+    private void Awake()
+    {
+        BrickMaterial.Instance.Initialize();
+    }
+
     // Use this for initialization
     void Start ()
     {
-        StartCoroutine("LoadModel");
+        StartCoroutine(LoadModel());
     }
 
     // Update is called once per frame

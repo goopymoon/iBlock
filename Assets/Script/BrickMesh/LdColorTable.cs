@@ -14,8 +14,6 @@ public class LdColorTable : MonoBehaviour
     private readonly Color32 DEF_BRICK_COLOR = new Color32(0x7F, 0x7F, 0x7F, 0xFF);
     private Dictionary<int, Color32> _palette;
 
-    private string readString;
-
     private static LdColorTable _instance;
     public static LdColorTable Instance
     {
@@ -126,51 +124,20 @@ public class LdColorTable : MonoBehaviour
         return palette;
     }
 
-    IEnumerator LoadFile(string filePath)
-    {
-        readString = string.Empty;
-
-        if (filePath.Contains("://"))
-        {
-            WWW www = new WWW(filePath);
-            new WWW(filePath);
-            yield return www;
-
-            if (!string.IsNullOrEmpty(www.error))
-            {
-                Debug.Log(www.error);
-                yield break;
-            }
-            readString = www.text;
-        }
-        else
-        {
-            if (!File.Exists(filePath))
-            {
-                Debug.Log(string.Format("File does not exists: {0}", filePath));
-                yield break;
-            }
-            readString = File.ReadAllText(filePath);
-        }
-
-        readString = Regex.Replace(readString, @"\r\n?|\n", Environment.NewLine);
-    }
-
     public IEnumerator Initialize()
     {
-		string filePath = Path.Combine(Application.streamingAssetsPath, "ldconfig.ldr");
+        string filePath = Path.Combine(Application.streamingAssetsPath, LdConstant.LD_CONFIG_FNAME);
 
-		yield return StartCoroutine ("LoadFile", filePath);
-        if (readString == string.Empty)
+        AsyncFileLoader afileLoader = new AsyncFileLoader();
+        yield return StartCoroutine(afileLoader.LoadFile(filePath));
+
+        string[] readText;
+        if (!afileLoader.GetSplitLines(out readText))
             yield break;
-
-        string[] readText = readString.Split(
-            Environment.NewLine.ToCharArray(),
-            StringSplitOptions.RemoveEmptyEntries);
 
         _palette = ParseColor(readText);
         IsInitialized = true;
 
-        Debug.Log(string.Format("Color table is ready."));
+        Debug.Log("Color table is ready.");
     }
 }

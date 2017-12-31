@@ -65,7 +65,7 @@ public class LdPartsLoader
         return true;
     }
 
-    private bool LoadCacheFile(string fileName, string basePath, Dictionary<string, string> canonicalPathCache)
+    private bool LoadSubFiles(string fileName, string basePath, Dictionary<string, string> canonicalPathCache)
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
 
@@ -131,26 +131,18 @@ public class LdPartsLoader
             return false;
         }
 
-        if (!LoadCacheFile(fileName, basePath, canonicalPathCache))
+        if (!LoadSubFiles(fileName, basePath, canonicalPathCache))
             return false;
 
         while (subFileNames.Count > 0)
         {
             string fname = subFileNames[0];
             subFileNames.RemoveAt(0);
-            if (!LoadCacheFile(fname, basePath, canonicalPathCache))
+            if (!LoadSubFiles(fname, basePath, canonicalPathCache))
                 return false;
         }
 
-        LdFileParser.FileLines val;
-        if (!fileCache.TryGetValue(fileName, out val))
-        {
-            Debug.Log(string.Format("Cannot find file cache for {0}", fileName));
-            return false;
-        }
-
-        string[] readText = val.cache.ToArray();
-        if (!ldFileParser.ParseModel(out brickMesh, fileName, readText, fileCache, Matrix4x4.identity))
+        if (!ldFileParser.Start(out brickMesh, fileName, fileCache, Matrix4x4.identity, false))
             return false;
 
         //Debug.Log(string.Format("Parsing model finished: {0}", fileName));

@@ -24,6 +24,12 @@
     public const string TAG_LDR_FILE_EXT = ".ldr";
     public const string TAG_DAT_FILE_EXT = ".dat";
 
+    // Import path
+    public const string LD_CONFIG_FNAME = "ldconfig.ldr";
+    public const string LD_PARTS_PATH = "ldparts";
+    public const string PARTS_LIST_FNAME = "parts.lst";
+    public const string PARTS_PATH_LIST_FNAME = "partspath.lst";
+
     static public short GetEffectiveColorIndex(short localColor, short parentColor)
     {
         return (localColor != LdConstant.LD_COLOR_MAIN) ? localColor : parentColor;
