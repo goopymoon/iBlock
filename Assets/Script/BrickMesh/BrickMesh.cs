@@ -25,6 +25,9 @@ public class BrickMesh
         return string.Format("{0}:{1}: {2}", bfcEnabled, brickColor.ToString(), name);
     }
 
+    public BrickMesh()
+    { }
+
     public BrickMesh(string meshName, bool isAsset=false)
     {
         name = meshName;

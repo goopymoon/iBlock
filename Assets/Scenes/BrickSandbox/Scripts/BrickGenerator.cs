@@ -9,15 +9,21 @@ public class BrickGenerator : MonoBehaviour
 {
     public GameObject terrainMesh;
     public GameObject brickPrefab;
-    public string modelFileName = @"Creator/4349 - Bird.mpd";
+    public string modelFileName;
+    public bool usePartAsset = false;
+
+    private float startTime;
 
     private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
+        if (brickMesh == null || brickMesh.name == null)
+            return null;
+
         GameObject go = null;
         bool isMeshExist = false;
 
-        if (brickMesh.IsPartAsset)
+        if (usePartAsset && brickMesh.IsPartAsset)
         {
             string path = @"Parts/Prefabs/" + Path.GetFileNameWithoutExtension(brickMesh.name);
             GameObject partObj = Resources.Load(path) as GameObject;
@@ -83,17 +89,25 @@ public class BrickGenerator : MonoBehaviour
 
     IEnumerator LoadModel()
     {
+        startTime = Time.time;
+
         if (!LdColorTable.Instance.IsInitialized)
         {
             yield return StartCoroutine(LdColorTable.Instance.Initialize());
         }
 
-        yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName));
+        yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
         var go = CreateMesh(GetComponent<LdModelLoader>().model, transform);
+        if (go == null)
+        {
+            yield break;
+        }
 
         InitCameraZoomRange(go);
         SnapToTerrain(go);
+
+        Debug.Log(string.Format("Elapsed time: {0}", (Time.time - startTime)));
     }
 
     private void Awake()

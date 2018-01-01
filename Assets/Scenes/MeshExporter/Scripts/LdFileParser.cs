@@ -40,6 +40,12 @@ public class LdFileParser
 
     private bool isUsingPartsAsset;
     private Dictionary<string, FileLines> fileCache;
+    private Dictionary<string, BrickMesh> brickCache;
+
+    public LdFileParser()
+    {
+        brickCache = new Dictionary<string, BrickMesh>();
+    }
 
     private Vector3 ParseVector(string[] words, ref int offset)
     {
@@ -399,38 +405,52 @@ public class LdFileParser
             else
             {
                 subBrickMesh = new BrickMesh(cacheFileName, true);
-                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                if (parentMesh == null)
+                {
+                    parentMesh = subBrickMesh;
+                }
+                else
+                {
+                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                }
                 return true;
             }
         }
 
-        if (!ParseModel(out subBrickMesh, fileName, val.cache.ToArray(), Matrix4x4.identity))
+        if (brickCache.ContainsKey(cacheFileName))
         {
-            return false;
+            subBrickMesh = new BrickMesh(brickCache[cacheFileName]);
         }
         else
         {
-            if (parentMesh == null)
-                parentMesh = subBrickMesh;
-            else
-            {
-                subBrickMesh.Optimize();
+            if (!ParseModel(out subBrickMesh, fileName, val.cache.ToArray(), Matrix4x4.identity))
+                return false;
 
-                bool forceMerge = !isUsingPartsAsset || IsNeedMerge(fileName, val.filePath);
-                if (forceMerge)
-                    parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
-                else
-                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-            }
-
-            return true;
+            subBrickMesh.Optimize();
+            brickCache[cacheFileName] = new BrickMesh(subBrickMesh);
         }
+
+        if (parentMesh == null)
+        {
+            parentMesh = subBrickMesh;
+        }
+        else
+        {
+            bool forceMerge = IsNeedMerge(fileName, val.filePath);
+            if (forceMerge)
+                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
+            else
+                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+        }
+
+        return true;
     }
 
     public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, FileLines> fCache, Matrix4x4 trMatrix, bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
         fileCache = fCache;
+        brickCache.Clear();
 
         brickMesh = null;
         return TryParseModel(ref brickMesh, modelName, trMatrix);

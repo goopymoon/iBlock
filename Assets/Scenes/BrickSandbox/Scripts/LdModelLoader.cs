@@ -20,6 +20,7 @@ public class LdModelLoader : MonoBehaviour
 
     private string mainModelName;
     private List<string> subFileNames;
+    private bool usePartAsset = false;
 
     private string GetBaseImportPath()
     {
@@ -159,21 +160,17 @@ public class LdModelLoader : MonoBehaviour
         return mainModelName;
     }
 
-    bool GetPartPath(string canonicalName, out string filePath)
-    {
-        filePath = null;
-
-        return true;
-    }
-
     IEnumerator LoadCacheFiles(string fileName)
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
 
-        if (partsListCache.ContainsKey(cacheFileName))
+        if (usePartAsset)
         {
-            //Debug.Log(string.Format("Skip loading part asset from ldraw file: {0}", cacheFileName));
-            yield break;
+            if (partsListCache.ContainsKey(cacheFileName))
+            {
+                //Debug.Log(string.Format("Skip loading part asset from ldraw file: {0}", cacheFileName));
+                yield break;
+            }
         }
 
         LdFileParser.FileLines fileLines;
@@ -261,8 +258,10 @@ public class LdModelLoader : MonoBehaviour
         }
     }
 
-    public IEnumerator Load(string fileName)
+    public IEnumerator Load(string fileName, bool usePreparedPartAsset)
     {
+        usePartAsset = usePreparedPartAsset;
+
         yield return StartCoroutine("LoadPartsListFile");
         yield return StartCoroutine("LoadPartsPathFile");
         yield return StartCoroutine("LoadMPDFile", fileName);
@@ -275,7 +274,7 @@ public class LdModelLoader : MonoBehaviour
             yield break;
         }
 
-        if (!ldFileParser.Start(out model, mainModelName, fileCache, Matrix4x4.identity, true))
+        if (!ldFileParser.Start(out model, mainModelName, fileCache, Matrix4x4.identity, usePartAsset))
             yield break;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));
@@ -287,5 +286,6 @@ public class LdModelLoader : MonoBehaviour
         partsPathCache = new Dictionary<string, string>();
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
         ldFileParser = new LdFileParser();
+        model = null;
     }
 }
