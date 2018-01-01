@@ -13,6 +13,7 @@ public class LdColorTable : MonoBehaviour
 
     private readonly Color32 DEF_BRICK_COLOR = new Color32(0x7F, 0x7F, 0x7F, 0xFF);
     private Dictionary<int, Color32> _palette;
+    private Dictionary<Color32, int> _invPalette;
 
     private static LdColorTable _instance;
     public static LdColorTable Instance
@@ -48,14 +49,38 @@ public class LdColorTable : MonoBehaviour
         }
 
         if (_palette.ContainsKey(colorIndex))
+        {
             return _palette[colorIndex];
+        }
         else
+        {
             return DEF_BRICK_COLOR;
+        }
     }
 
-    private Dictionary<int, Color32> ParseColor(string[] readText)
+    public int GetColorIndex(Color32 color)
+    {
+        if (!IsInitialized)
+        {
+            Debug.Log("LdColorTable is not initialized");
+            return LdConstant.LD_COLOR_MAIN;
+        }
+
+        if (_invPalette.ContainsKey(color))
+        {
+            return _invPalette[color];
+        }
+        else
+        {
+            return LdConstant.LD_COLOR_MAIN;
+        }
+    }
+
+    // Only diffuse color is supported
+    private void ParseColor(string[] readText)
     {
         Dictionary<int, Color32> palette = new Dictionary<int, Color32>();
+        Dictionary<Color32, int> invPalette = new Dictionary<Color32, int>();
 
         for (int i = 0; i < readText.Length; ++i)
         {
@@ -118,10 +143,21 @@ public class LdColorTable : MonoBehaviour
                 }
 
                 palette.Add(code, color);
+
+                if (invPalette.ContainsKey(color))
+                {
+                    Debug.Log(string.Format("Duplicated color {0}(#{1}{2}{3}, {4}) {5}", 
+                        color, RBuilder.ToString(), GBuilder.ToString(), BBuilder.ToString(), color.a, code));
+                }
+                else
+                {
+                    invPalette.Add(color, code);
+                }
             }
         }
 
-        return palette;
+        _palette = palette;
+        _invPalette = invPalette;
     }
 
     public IEnumerator Initialize()
@@ -135,7 +171,8 @@ public class LdColorTable : MonoBehaviour
         if (!afileLoader.GetSplitLines(out readText))
             yield break;
 
-        _palette = ParseColor(readText);
+        ParseColor(readText);
+
         IsInitialized = true;
 
         Debug.Log("Color table is ready.");

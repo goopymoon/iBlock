@@ -15,6 +15,7 @@ public class BrickGenerator : MonoBehaviour
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         GameObject go = null;
+        bool isMeshExist = false;
 
         if (brickMesh.IsPartAsset)
         {
@@ -25,16 +26,20 @@ public class BrickGenerator : MonoBehaviour
                 Debug.Log(string.Format("Cannot load {0}", path));
                 return null;
             }
+
             go = (GameObject)Instantiate(partObj);
+            isMeshExist = go.GetComponent<Brick>().ReconstructMesh(go, brickMesh, parentBrickColor, invertNext);
         }
         else
         {
             go = (GameObject)Instantiate(brickPrefab);
+            isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext);
         }
 
         go.name = brickMesh.brickInfo();
         go.GetComponent<Brick>().SetParent(parent);
-        if (go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext))
+
+        if (isMeshExist)
         {
             GetComponent<BrickController>().Register(go);
         }

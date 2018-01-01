@@ -179,22 +179,24 @@ public class BrickMesh
         MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);
     }
 
-    private void GetVertices(ref List<Vector3> vts)
+    private void GetVertices(out Vector3[] vts)
     {
-        for (int i = 0; i < vertices.Count; ++i)
-            vts.Add(vertices[i]);
+        vts = vertices.ToArray();
     }
 
-    private void GetColors(short parentColor, ref List<Color32> colList)
+    private void GetColors(short parentColor, out Color32[] colList)
     {
+        colList = new Color32[colorIndices.Count];
+
         for (int i = 0; i < colorIndices.Count; ++i)
         {
             short colorIndex = LdConstant.GetEffectiveColorIndex(colorIndices[i], parentColor);
-            colList.Add(LdColorTable.Instance.GetColor(colorIndex));
+            colList[i] = LdColorTable.Instance.GetColor(colorIndex);
         }
     }
 
-    private void GetTriangles(bool invert, List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris, int offset = 0)
+    private void GetTriangles(bool invert,
+    ref Color32[] colors, ref List<int> opaqueTris, ref List<int> transparentTris, int offset = 0)
     {
         bool invertFlag = invert ^ invertNext;
 
@@ -221,7 +223,7 @@ public class BrickMesh
                     alphaCnt++;
             }
 
-            Debug.Assert(alphaCnt == 0 || alphaCnt == 3, 
+            Debug.Assert(alphaCnt == 0 || alphaCnt == 3,
                 string.Format("Alpha count is not zero or three: {0}", alphaCnt));
 
             if (alphaCnt == 0)
@@ -239,18 +241,104 @@ public class BrickMesh
         }
     }
 
+    public bool GetTobeChangeColors(short parentColor, Mesh mesh, out Color32[] colList)
+    {
+        bool isModified = false;
+
+        colList = new Color32[mesh.colors.Length];
+
+        for (int i = 0; i < mesh.colors.Length; ++i)
+        {
+            short restoreIndex = (short)LdColorTable.Instance.GetColorIndex(mesh.colors[i]);
+            short colorIndex = LdConstant.GetEffectiveColorIndex(restoreIndex, parentColor);
+            colList[i] = LdColorTable.Instance.GetColor(colorIndex);
+
+            isModified |= (mesh.colors[i] != colList[i]);
+        }
+
+        return isModified;
+    }
+
+    public bool GetTobeChangedTriangles(bool invert, Mesh mesh, ref Color32[] colors, out int[] tris)
+    {
+        bool invertFlag = invert ^ invertNext;
+
+        if (invertFlag)
+        {
+            tris = new int[mesh.triangles.Length];
+
+            for (int i = 0; i < mesh.triangles.Length; i += 3)
+            {
+                if (!invertFlag)
+                {
+                    tris[i] = mesh.triangles[i];
+                    tris[i + 1] = mesh.triangles[i + 1];
+                    tris[i + 2] = mesh.triangles[i + 2];
+                }
+                else
+                {
+                    tris[i] = mesh.triangles[i];
+                    tris[i + 1] = mesh.triangles[i + 2];
+                    tris[i + 2] = mesh.triangles[i + 1];
+                }
+            }
+        }
+        else
+        {
+            tris = null;
+        }
+
+        return invertFlag;
+    }
+
+    public bool GetTobeChangedMatInfo(Mesh mesh, ref Color32[] colors, out BrickMaterial.MatType matType)
+    {
+        bool isModified = false;
+
+        matType = (colors.Length > 0 && colors[0].a < 255)
+            ? BrickMaterial.MatType.Transparent : BrickMaterial.MatType.Opaque;
+
+        if (mesh.subMeshCount == 1)
+        {
+            isModified = (mesh.colors32[0].a != colors[0].a);
+        }
+        else if (mesh.subMeshCount == 2)
+        {
+            for (int i = 0; i < mesh.colors32.Length; i++)
+            {
+                if (colors[i].a != mesh.colors32[i].a)
+                {
+                    isModified = true;
+                }
+            }
+        }
+
+        return isModified;
+    }
+
     public void GetRenderMeshInfo(short parentBrickColor, bool invert, 
-        ref List<Vector3> vts, ref List<Color32> colors, ref List<int> opaqueTris, ref List<int> transparentTris)
+        out Vector3[] vts, out Color32[] colors, out int[] opaqueTris, out int[] transparentTris)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
 
-        vts.Clear();
-        colors.Clear();
-        opaqueTris.Clear();
-        transparentTris.Clear();
+        GetVertices(out vts);
+        GetColors(effectiveParentColor, out colors);
 
-        GetVertices(ref vts);
-        GetColors(effectiveParentColor, ref colors);
-        GetTriangles(invert, colors, ref opaqueTris, ref transparentTris);
+        List<int> opaqueTriList = new List<int>();
+        List<int> transparentTriList = new List<int>();
+        GetTriangles(invert, ref colors, ref opaqueTriList, ref transparentTriList);
+
+        opaqueTris = opaqueTriList.ToArray();
+        transparentTris = transparentTriList.ToArray();
+    }
+
+    public void GetRenderMeshReconstructInfo(short parentBrickColor, bool invert, Mesh mesh,
+        out Color32[] colors, out int[] tris, out BrickMaterial.MatType matType, out bool isColorModified, out bool isMeshModified, out bool isMatModified)
+    {
+        short effectiveParentColor = LdConstant.GetEffectiveColorIndex(brickColor, parentBrickColor);
+
+        isColorModified = GetTobeChangeColors(effectiveParentColor, mesh, out colors);
+        isMeshModified = GetTobeChangedTriangles(invert, mesh, ref colors, out tris);
+        isMatModified = GetTobeChangedMatInfo(mesh, ref colors, out matType);
     }
 }

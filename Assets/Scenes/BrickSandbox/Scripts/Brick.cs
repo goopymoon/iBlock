@@ -24,7 +24,7 @@ public class Brick : MonoBehaviour
         }
     }
 
-    struct BrickMaterialInfo
+    public struct BrickMaterialInfo
     {
         public BrickMaterial.MatType type;
         public int offset;
@@ -109,6 +109,45 @@ public class Brick : MonoBehaviour
         boxCollider.isTrigger = true;
     }
 
+    public bool ReconstructMesh(GameObject go, BrickMesh brickMesh, short parentBrickColor, bool invertNext)
+    {
+        TransformModel(brickMesh);
+
+        Mesh mesh = go.GetComponent<MeshFilter>().mesh;
+        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
+
+        // The colors will be created.
+        Color32[] colors;
+        int[] tris;
+        bool isColorModified;
+        bool isMeshModified;
+        bool isMatModified;
+        BrickMaterial.MatType matType;
+
+        brickMesh.GetRenderMeshReconstructInfo(parentBrickColor, invertNext, mesh, 
+            out colors, out tris, out matType, out isColorModified, out isMeshModified, out isMatModified);
+
+        // assign the array of colors to the Mesh.
+        if (isColorModified)
+        {
+            mesh.colors32 = colors;
+        }
+
+        if (isMeshModified)
+        {
+            mesh.triangles = tris;
+            mesh.RecalculateNormals();
+        }
+
+        if (isMatModified)
+        {
+            originalMat = new BrickMaterialInfo(matType, matIndexOffset, mesh.subMeshCount);
+            ChangeMaterial(originalMat);
+        }
+
+        return true;
+    }
+
     public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext)
     {
         TransformModel(brickMesh);
@@ -116,36 +155,36 @@ public class Brick : MonoBehaviour
         if (brickMesh.vertices.Count == 0)
             return false;
 
-        List<Vector3> vts = new List<Vector3>();
-        List<Color32> colors = new List<Color32>();
-        List<int> opaqueTris = new List<int>();
-        List<int> transparentTris = new List<int>();
+        Vector3[] vts;
+        Color32[] colors;
+        int[] opaqueTris;
+        int[] transparentTris;
         Mesh mesh = new Mesh();
         int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
         brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext,
-            ref vts, ref colors, ref opaqueTris, ref transparentTris);
+            out vts, out colors, out opaqueTris, out transparentTris);
 
-        mesh.vertices = vts.ToArray();
-        mesh.colors32 = colors.ToArray();
+        mesh.vertices = vts;
+        mesh.colors32 = colors;
 
-        if (opaqueTris.Count > 0 && transparentTris.Count == 0)
+        if (opaqueTris.Length > 0 && transparentTris.Length == 0)
         {
-            mesh.SetTriangles(opaqueTris.ToArray(), 0);
+            mesh.SetTriangles(opaqueTris, 0);
 
             originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 1);
         }
-        else if (opaqueTris.Count == 0 && transparentTris.Count > 0)
+        else if (opaqueTris.Length == 0 && transparentTris.Length > 0)
         {
-            mesh.SetTriangles(transparentTris.ToArray(), 0);
+            mesh.SetTriangles(transparentTris, 0);
 
             originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Transparent, matIndexOffset, 1);
         }
-        else if (opaqueTris.Count > 0 && transparentTris.Count > 0)
+        else if (opaqueTris.Length > 0 && transparentTris.Length > 0)
         {
             mesh.subMeshCount = 2;
-            mesh.SetTriangles(opaqueTris.ToArray(), 0);
-            mesh.SetTriangles(transparentTris.ToArray(), 1);
+            mesh.SetTriangles(opaqueTris, 0);
+            mesh.SetTriangles(transparentTris, 1);
 
             originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 2);
         }
