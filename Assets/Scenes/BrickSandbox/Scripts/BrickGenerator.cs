@@ -12,13 +12,14 @@ public class BrickGenerator : MonoBehaviour
     public string modelFileName;
     public bool usePartAsset = false;
 
+    private GameObject modelObj;
     private float startTime;
 
-    private GameObject CreateMesh(BrickMesh brickMesh, Transform parent, 
+    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         if (brickMesh == null || brickMesh.name == null)
-            return null;
+            yield break;
 
         GameObject go = null;
         bool isMeshExist = false;
@@ -30,7 +31,7 @@ public class BrickGenerator : MonoBehaviour
             if (!partObj)
             {
                 Debug.Log(string.Format("Cannot load {0}", path));
-                return null;
+                yield break;
             }
 
             go = (GameObject)Instantiate(partObj);
@@ -42,7 +43,10 @@ public class BrickGenerator : MonoBehaviour
             isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext);
         }
 
-        go.name = brickMesh.brickInfo();
+        if (modelObj == null)
+            modelObj = go;
+
+        go.name = brickMesh.name;
         go.GetComponent<Brick>().SetParent(parent);
 
         if (isMeshExist)
@@ -54,10 +58,8 @@ public class BrickGenerator : MonoBehaviour
         {
             bool invertFlag = invertNext ^ brickMesh.invertNext;
             short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
-            CreateMesh(brickMesh.children[i], go.transform, invertFlag, accuColor);
+            yield return StartCoroutine(CreateMesh(brickMesh.children[i], go.transform, invertFlag, accuColor));
         }
-
-        return go;
     }
 
     private void InitCameraZoomRange(GameObject go)
@@ -89,6 +91,7 @@ public class BrickGenerator : MonoBehaviour
 
     IEnumerator LoadModel()
     {
+        modelObj = null;
         startTime = Time.time;
 
         if (!LdColorTable.Instance.IsInitialized)
@@ -98,14 +101,13 @@ public class BrickGenerator : MonoBehaviour
 
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
-        var go = CreateMesh(GetComponent<LdModelLoader>().model, transform);
-        if (go == null)
-        {
-            yield break;
-        }
+        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
 
-        InitCameraZoomRange(go);
-        SnapToTerrain(go);
+        if (modelObj == null)
+            yield break;
+
+        InitCameraZoomRange(modelObj);
+        SnapToTerrain(modelObj);
 
         Debug.Log(string.Format("Elapsed time: {0}", (Time.time - startTime)));
     }

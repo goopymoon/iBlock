@@ -20,11 +20,6 @@ public class BrickMesh
 
     private Matrix4x4 localTr;
 
-    public string brickInfo()
-    {
-        return string.Format("{0}:{1}: {2}", bfcEnabled, brickColor.ToString(), name);
-    }
-
     public BrickMesh()
     { }
 

@@ -423,7 +423,7 @@ public class LdFileParser
         }
         else
         {
-            if (!ParseModel(out subBrickMesh, fileName, val.cache.ToArray(), Matrix4x4.identity))
+            if (!ParseModel(out subBrickMesh, cacheFileName, val.cache.ToArray(), Matrix4x4.identity))
                 return false;
 
             subBrickMesh.Optimize();
