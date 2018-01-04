@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Text;
+using System.Linq;
 
 public class LdModelLoader : MonoBehaviour
 {
@@ -19,7 +20,7 @@ public class LdModelLoader : MonoBehaviour
     private LdFileParser ldFileParser;
 
     private string mainModelName;
-    private List<string> subFileNames;
+    private HashSet<string> subFileNames;
     private bool usePartAsset = false;
 
     private string GetBaseImportPath()
@@ -29,6 +30,8 @@ public class LdModelLoader : MonoBehaviour
 
     public IEnumerator LoadPartsListFile()
     {
+        StopWatch stopWatch = new StopWatch("LoadPartsListFile");
+
         var filePath = Path.Combine(GetBaseImportPath(), LdConstant.PARTS_LIST_FNAME);
 
         AsyncFileLoader afileLoader = new AsyncFileLoader();
@@ -47,10 +50,14 @@ public class LdModelLoader : MonoBehaviour
         }
 
         Debug.Log(string.Format("Parts list cache is ready.", filePath));
+
+        stopWatch.EndTick();
     }
 
     public IEnumerator LoadPartsPathFile()
     {
+        StopWatch stopWatch = new StopWatch("LoadPartsPathFile");
+
         var filePath = Path.Combine(GetBaseImportPath(), LdConstant.PARTS_PATH_LIST_FNAME);
 
         AsyncFileLoader afileLoader = new AsyncFileLoader();
@@ -69,9 +76,11 @@ public class LdModelLoader : MonoBehaviour
         }
 
         Debug.Log(string.Format("Parts path cache is ready.", filePath));
+
+        stopWatch.EndTick();
     }
 
-    private bool ExtractSubFileNames(string[] readText, ref List<string> subFileNames)
+    private void ExtractSubFileNames(string[] readText, ref HashSet<string> subFileNames)
     {
         for (int i = 0; i < readText.Length; ++i)
         {
@@ -90,7 +99,7 @@ public class LdModelLoader : MonoBehaviour
                 if (words.Length < 15)
                 {
                     Debug.Log(string.Format("Subfile syntax error: {0}", line));
-                    return false;
+                    continue;
                 }
 
                 string fname = words[14];
@@ -99,11 +108,16 @@ public class LdModelLoader : MonoBehaviour
                     fname += words[j];
                 }
 
+                if (usePartAsset)
+                {
+                    string cacheFileName = fname.Replace(@"\", @"/").ToLower();
+                    if (partsListCache.ContainsKey(cacheFileName))
+                        continue;
+                }
+
                 subFileNames.Add(fname.ToLower());
             }
         }
-
-        return true;
     }
 
     private bool ExtractModelName(string line, ref string modelName)
@@ -164,30 +178,23 @@ public class LdModelLoader : MonoBehaviour
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
 
-        if (usePartAsset)
-        {
-            if (partsListCache.ContainsKey(cacheFileName))
-            {
-                //Debug.Log(string.Format("Skip loading part asset from ldraw file: {0}", cacheFileName));
-                yield break;
-            }
-        }
+        if (usePartAsset && partsListCache.ContainsKey(cacheFileName))
+            yield break;
 
         LdFileParser.FileLines fileLines;
-        List<string> localSubFileNames = new List<string>();
+        HashSet<string> localSubFileNames = new HashSet<string>();
 
         if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
-            if (fileLines.loadCompleted)
-                yield break;
-
-            if (!ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames))
+            if (!fileLines.loadCompleted)
             {
-                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
-                yield break;
+                ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames);
+                if (localSubFileNames.Count > 0)
+                {
+                    subFileNames.UnionWith(localSubFileNames);
+                }
+                fileCache[cacheFileName].loadCompleted = true;
             }
-
-            fileCache[cacheFileName].loadCompleted = true;
         }
         else
         {
@@ -195,34 +202,33 @@ public class LdModelLoader : MonoBehaviour
             if (!partsPathCache.TryGetValue(cacheFileName, out val))
             {
                 Debug.Log(string.Format("Parts path has no {0}", cacheFileName));
-                yield break;
             }
-
-            string filePath = Path.Combine(GetBaseImportPath(), val);
-
-            AsyncFileLoader afileLoader = new AsyncFileLoader();
-            yield return StartCoroutine(afileLoader.LoadFile(filePath));
-
-            string[] readText;
-            if (!afileLoader.GetSplitLines(out readText))
-                yield break;
-
-            if (!ExtractSubFileNames(readText, ref localSubFileNames))
+            else
             {
-                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
-                yield break;
+                string filePath = Path.Combine(GetBaseImportPath(), val);
+
+                AsyncFileLoader afileLoader = new AsyncFileLoader();
+                yield return StartCoroutine(afileLoader.LoadFile(filePath));
+
+                string[] readText;
+                if (!afileLoader.GetSplitLines(out readText))
+                    yield break;
+
+                ExtractSubFileNames(readText, ref localSubFileNames);
+                if (localSubFileNames.Count > 0)
+                {
+                    subFileNames.UnionWith(localSubFileNames);
+                }
+                fileCache.Add(cacheFileName, new LdFileParser.FileLines(val, readText));
             }
-
-            fileCache.Add(cacheFileName, new LdFileParser.FileLines(val, readText));
         }
-
-        if (localSubFileNames.Count != 0)
-            subFileNames.AddRange(localSubFileNames);
     }
 
     public IEnumerator LoadMPDFile(string fileName)
     {
-		mainModelName = string.Empty;
+        StopWatch stopWatch = new StopWatch();
+
+        mainModelName = string.Empty;
 
         string ext = Path.GetExtension(fileName);
         if (!ext.Equals(LdConstant.TAG_MPD_FILE_EXT, StringComparison.OrdinalIgnoreCase))
@@ -238,24 +244,31 @@ public class LdModelLoader : MonoBehaviour
         if (!afileLoader.GetSplitLines(out readText))
             yield break;
 
+        stopWatch.StartTick("Load ldr files");
 		mainModelName = LoadLDRFiles(readText);
+        stopWatch.EndTick();
 
+        stopWatch.StartTick("Load sub files");
+        int cc = 0;
         if (mainModelName.Length > 0)
         {
-            subFileNames = new List<string>();
-            subFileNames.Add(mainModelName);
-
-            Debug.Log(string.Format("Load sub files for: {0}", mainModelName));
+            subFileNames = new HashSet<string> { mainModelName };
 
             while (subFileNames.Count > 0)
             {
-                string fname = subFileNames[0];
-                subFileNames.RemoveAt(0);
+                cc++;
+                var fname = subFileNames.FirstOrDefault();
+                if (fname != null)
+                {
+                    subFileNames.Remove(fname);
+                }
                 yield return StartCoroutine("LoadCacheFiles", fname);
             }
 
-            Debug.Log(string.Format("Loading finished: {0}", fileCache.Count.ToString()));
+            Debug.Log(string.Format("Loading finished: {0} file caches", fileCache.Count.ToString()));
         }
+        Debug.Log(string.Format("subfile loop cnt {0}", cc));
+        stopWatch.EndTick();
     }
 
     public IEnumerator Load(string fileName, bool usePreparedPartAsset)
@@ -274,7 +287,7 @@ public class LdModelLoader : MonoBehaviour
             yield break;
         }
 
-        if (!ldFileParser.Start(out model, mainModelName, fileCache, Matrix4x4.identity, usePartAsset))
+        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, Matrix4x4.identity, usePartAsset))
             yield break;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));

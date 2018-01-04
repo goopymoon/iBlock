@@ -142,7 +142,7 @@ public class LdPartsLoader
                 return false;
         }
 
-        if (!ldFileParser.Start(out brickMesh, fileName, fileCache, Matrix4x4.identity, false))
+        if (!ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, Matrix4x4.identity, false))
             return false;
 
         //Debug.Log(string.Format("Parsing model finished: {0}", fileName));

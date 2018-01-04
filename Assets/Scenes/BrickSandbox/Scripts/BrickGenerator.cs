@@ -13,7 +13,6 @@ public class BrickGenerator : MonoBehaviour
     public bool usePartAsset = false;
 
     private GameObject modelObj;
-    private float startTime;
 
     private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
@@ -92,7 +91,6 @@ public class BrickGenerator : MonoBehaviour
     IEnumerator LoadModel()
     {
         modelObj = null;
-        startTime = Time.time;
 
         if (!LdColorTable.Instance.IsInitialized)
         {
@@ -101,15 +99,15 @@ public class BrickGenerator : MonoBehaviour
 
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
+        StopWatch stopWatch = new StopWatch("Create Mesh");
         yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
+        stopWatch.EndTick();
 
         if (modelObj == null)
             yield break;
 
         InitCameraZoomRange(modelObj);
         SnapToTerrain(modelObj);
-
-        Debug.Log(string.Format("Elapsed time: {0}", (Time.time - startTime)));
     }
 
     private void Awake()

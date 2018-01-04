@@ -39,6 +39,7 @@ public class LdFileParser
     private enum eWinding { CCW = 0, CW };
 
     private bool isUsingPartsAsset;
+    private Dictionary<string, string> pathCache;
     private Dictionary<string, FileLines> fileCache;
     private Dictionary<string, BrickMesh> brickCache;
 
@@ -368,21 +369,17 @@ public class LdFileParser
         return true;
     }
 
-    private bool IsNeedMerge(string fileName, string filePath)
+    private bool IsNeedMerge(string fileName)
     {
         string ext = Path.GetExtension(fileName).ToLower();
+        if (ext != ".dat")
+            return false;
 
-        if (ext == ".dat")
+        string filePath;
+        if (pathCache.TryGetValue(fileName, out filePath))
         {
-            if (filePath.Length > 0)
-            {
-                string dirName = Path.GetDirectoryName(filePath);
-                return (dirName != "parts");
-            }
-            else
-            {
-                return (Path.GetDirectoryName(fileName).Length > 0);
-            }
+            string dirName = Path.GetDirectoryName(filePath);
+            return (dirName != "parts");
         }
 
         return false;
@@ -393,29 +390,7 @@ public class LdFileParser
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
         BrickMesh subBrickMesh = null;
-
-        FileLines val;
-        if (!fileCache.TryGetValue(cacheFileName, out val))
-        {
-            if (!isUsingPartsAsset)
-            {
-                Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
-                return false;
-            }
-            else
-            {
-                subBrickMesh = new BrickMesh(cacheFileName, true);
-                if (parentMesh == null)
-                {
-                    parentMesh = subBrickMesh;
-                }
-                else
-                {
-                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
-                }
-                return true;
-            }
-        }
+        bool forceMerge = false;
 
         if (brickCache.ContainsKey(cacheFileName))
         {
@@ -423,6 +398,24 @@ public class LdFileParser
         }
         else
         {
+            FileLines val;
+            if (!fileCache.TryGetValue(cacheFileName, out val))
+            {
+                if (!isUsingPartsAsset)
+                {
+                    Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
+                    return false;
+                }
+
+                subBrickMesh = new BrickMesh(cacheFileName, true);
+                if (parentMesh == null)
+                    parentMesh = subBrickMesh;
+                else
+                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+
+                return true;
+            }
+
             if (!ParseModel(out subBrickMesh, cacheFileName, val.cache.ToArray(), Matrix4x4.identity))
                 return false;
 
@@ -436,7 +429,7 @@ public class LdFileParser
         }
         else
         {
-            bool forceMerge = IsNeedMerge(fileName, val.filePath);
+            forceMerge = IsNeedMerge(fileName);
             if (forceMerge)
                 parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
             else
@@ -446,13 +439,21 @@ public class LdFileParser
         return true;
     }
 
-    public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, FileLines> fCache, Matrix4x4 trMatrix, bool usePartsAsset)
+    public bool Start(out BrickMesh brickMesh, string modelName,
+        Dictionary<string, string> pCache, Dictionary<string, FileLines> fCache,
+        Matrix4x4 trMatrix, bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
+        pathCache = pCache;
         fileCache = fCache;
         brickCache.Clear();
 
         brickMesh = null;
-        return TryParseModel(ref brickMesh, modelName, trMatrix);
+
+        StopWatch stopWatch = new StopWatch("Parsing Model");
+        bool ret = TryParseModel(ref brickMesh, modelName, trMatrix);
+        stopWatch.EndTick();
+
+        return ret;
     }
 }
