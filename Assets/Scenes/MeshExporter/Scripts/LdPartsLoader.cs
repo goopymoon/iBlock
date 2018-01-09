@@ -5,49 +5,16 @@ using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 public class LdPartsLoader
 {
     public bool IsInitialized { get; private set; }
 
-    private List<string> subFileNames = null;
-    private Dictionary<string, LdFileParser.FileLines> fileCache = null;
     private LdFileParser ldFileParser;
 
-    private bool ExtractSubFileNames(string[] readText, ref List<string> subFileNames)
-    {
-        for (int i = 0; i < readText.Length; ++i)
-        {
-            string line = readText[i];
-
-            line.Replace("\t", " ");
-            line = line.Trim();
-
-            if (line.Length == 0)
-                continue;
-
-            int lineType = (int)Char.GetNumericValue(line[0]);
-            if (lineType == 1)
-            {
-                string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (words.Length < 15)
-                {
-                    Debug.Log(string.Format("Subfile syntax error: {0}", line));
-                    return false;
-                }
-
-                string fname = words[14];
-                for (int j = 15; j < words.Length; ++j)
-                {
-                    fname += words[j];
-                }
-
-                subFileNames.Add(fname.ToLower());
-            }
-        }
-
-        return true;
-    }
+    private HashSet<string> subFileNames;
+    private Dictionary<string, LdFileParser.FileLines> fileCache;
 
     private bool LoadFile(string filePath, ref string readString)
     {
@@ -65,35 +32,31 @@ public class LdPartsLoader
         return true;
     }
 
-    private bool LoadSubFiles(string fileName, string basePath, Dictionary<string, string> canonicalPathCache)
+    private bool LoadSubFiles(string fileName, string basePath, Dictionary<string, Queue<string>> canonicalPathCache)
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
 
         LdFileParser.FileLines fileLines;
-        List<string> localSubFileNames = new List<string>();
+        HashSet<string> localSubFileNames = new HashSet<string>();
 
         if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
             if (fileLines.loadCompleted)
                 return true;
 
-            if (!ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames))
-            {
-                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
-                return false;
-            }
-
+            LdSubFileNameLoader.ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames);
             fileCache[cacheFileName].loadCompleted = true;
         }
         else
         {
-            string val;
-            if (!canonicalPathCache.TryGetValue(cacheFileName, out val))
+            Queue<string> pathQueue;
+            if (!canonicalPathCache.TryGetValue(cacheFileName, out pathQueue) || pathQueue.Count == 0)
             {
-                Debug.Log(string.Format("Parts list has no {0}", cacheFileName));
+                Debug.Log(string.Format("Parts path cache has no {0}", cacheFileName));
                 return false;
             }
 
+            var val = pathQueue.First();
             var filePath = Path.Combine(basePath, val);
             string readString = null;
 
@@ -106,22 +69,19 @@ public class LdPartsLoader
             string[] readText = readString.Split(
                 Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
-            if (!ExtractSubFileNames(readText, ref localSubFileNames))
-            {
-                Debug.Log(string.Format("Extracting sub file failed: {0}", cacheFileName));
-                return false;
-            }
-
+            LdSubFileNameLoader.ExtractSubFileNames(readText, ref localSubFileNames);
             fileCache.Add(cacheFileName, new LdFileParser.FileLines(val, readText));
         }
 
-        if (localSubFileNames.Count != 0)
-            subFileNames.AddRange(localSubFileNames);
+        if (localSubFileNames.Count > 0)
+        {
+            subFileNames.UnionWith(localSubFileNames);
+        }
 
         return true;
     }
 
-    public bool LoadPart(out BrickMesh brickMesh, string fileName, string basePath, Dictionary<string, string> canonicalPathCache)
+    public bool LoadPart(out BrickMesh brickMesh, string fileName, string basePath, Dictionary<string, Queue<string>> canonicalPathCache)
     {
         brickMesh = null;
 
@@ -136,24 +96,22 @@ public class LdPartsLoader
 
         while (subFileNames.Count > 0)
         {
-            string fname = subFileNames[0];
-            subFileNames.RemoveAt(0);
+            string fname = subFileNames.FirstOrDefault();
+            if (fname != null)
+            {
+                subFileNames.Remove(fname);
+            }
             if (!LoadSubFiles(fname, basePath, canonicalPathCache))
                 return false;
         }
 
-        if (!ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, Matrix4x4.identity, false))
-            return false;
-
-        //Debug.Log(string.Format("Parsing model finished: {0}", fileName));
-
-        return true;
+        return ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, Matrix4x4.identity, false);
     }
 
     public bool Initialize()
     {
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
-        subFileNames = new List<string>();
+        subFileNames = new HashSet<string>();
         ldFileParser = new LdFileParser();
 
         IsInitialized = true;

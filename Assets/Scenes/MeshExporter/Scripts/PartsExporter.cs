@@ -10,8 +10,9 @@ using System.IO;
 using System.Linq;
 
 public class PartsExporter : MonoBehaviour {
-    // Import path
-    public readonly string[] subPath = { "parts", "p" };
+    // Import path. Order means priority of the same file
+    public readonly string[] subPath = { "parts", "parts/s", "p/8", "p/48", "p" };
+    public readonly string[] subBasePath = { "parts", "parts", "p", "p", "p" };
     // Export path
     public readonly string partMeshOutPath = "Assets/Resources/Parts/Meshes/";
     public readonly string partPrefabOutPath = "Assets/Resources/Parts/Prefabs/";
@@ -20,31 +21,50 @@ public class PartsExporter : MonoBehaviour {
     public bool exportAll = false;
 
     private string baseImportPath;
-    private Dictionary<string, string> canonicalPathDic;
+    private Dictionary<string, Queue<string>> canonicalPathDic;
     private Queue<string> partNames;
     private LdPartsLoader ldPartsLoader;
 
-    public bool AddSearchPath(int subIndex, string filePath)
+    void AddSearchPath(string fname, string fpath)
     {
-        if (!Enumerable.Range(0, subPath.Length).Contains<int>(subIndex))
-            return false;
+        Queue<string> val;
+        if (canonicalPathDic.TryGetValue(fname, out val))
+        {
+            if (val.Contains(fpath))
+            {
+                Debug.Log(string.Format("Skip duplicated part {0} in {1}", fname, fpath));
+                return;
+            }
+            val.Enqueue(fpath);
+        }
+        else
+        {
+            var pathQueue = new Queue<string>();
+            pathQueue.Enqueue(fpath);
+            canonicalPathDic.Add(fname, pathQueue);
+        }
+    }
 
-        string name = filePath.Substring(Path.Combine(baseImportPath, subPath[subIndex]).Length + 1);
+    public void AddSearchPath(int i, string filePath)
+    {
+        string name = filePath.Substring(Path.Combine(baseImportPath, subBasePath[i]).Length + 1);
         string extension = Path.GetExtension(name);
 
         if (extension != ".dat")
-            return false;
+            return;
 
-        if (canonicalPathDic.ContainsKey(name.ToLower()))
-            return false;
+        string fpath = Path.Combine(subBasePath[i], name).Replace(@"\", @"/").ToLower();
 
-        var searchPath = Path.Combine(subPath[subIndex], name);
+        // original path
+        if (Path.GetDirectoryName(name).Length > 0)
+        {
+            string oriName = name.Replace(@"\", @"/").ToLower();
+            AddSearchPath(oriName, fpath);
+        }
 
-        string fname = name.Replace(@"\", @"/").ToLower();
-        string fpath = searchPath.Replace(@"\", @"/").ToLower();
-        canonicalPathDic.Add(fname, fpath);
-
-        return true;
+        // degenerated path
+        string fname = Path.GetFileName(name).ToLower();
+        AddSearchPath(fname, fpath);
     }
 
     void PrepareCanonicalPaths()
@@ -58,23 +78,16 @@ public class PartsExporter : MonoBehaviour {
             fileEntries = Directory.GetFiles(partPath);
             foreach (string fileName in fileEntries)
                 AddSearchPath(i, fileName);
-
-            string[] subdirectoryEntries = Directory.GetDirectories(partPath);
-            foreach (string subdirectory in subdirectoryEntries)
-            {
-                fileEntries = Directory.GetFiles(subdirectory);
-                foreach (string fileName in fileEntries)
-                    AddSearchPath(i, fileName);
-            }
         }
 
         // Print for Debugging
         string outFile = Path.Combine(baseImportPath, LdConstant.PARTS_PATH_LIST_FNAME);
         using (StreamWriter file = new StreamWriter(outFile))
         {
-            foreach (KeyValuePair<string, string> entry in canonicalPathDic)
+            foreach (KeyValuePair<string, Queue<string>> entry in canonicalPathDic)
             {
-                file.WriteLine("{0} {1}", entry.Key, entry.Value);
+                string pathStr = string.Join(" ", entry.Value.ToArray());
+                file.WriteLine("{0} {1}", entry.Key, pathStr);
             }
         }
     }
@@ -136,15 +149,15 @@ public class PartsExporter : MonoBehaviour {
     1 LDU = 1/64 in
     1 LDU = 0.4 mm
 */
-    bool ExportMesh(string fname)
+    void ExportMesh(string fname)
     {
         if (DoesAssetExist(fname))
-            return false;
+            return;
 
         BrickMesh brickMesh;
 
         if (!ldPartsLoader.LoadPart(out brickMesh, fname, baseImportPath, canonicalPathDic))
-            return false;
+            return;
 
         GameObject go = (GameObject)Instantiate(brickPrefab);
  
@@ -153,13 +166,13 @@ public class PartsExporter : MonoBehaviour {
         if (!go.GetComponent<Brick>().CreateMesh(brickMesh, LdConstant.LD_COLOR_MAIN, false))
         {
             Debug.Log(string.Format("Cannot create mesh: {0}", fname));
-            return false;
+        }
+        else
+        {
+            SaveAsset(fname, go);
         }
 
-        SaveAsset(fname, go);
         Destroy(go);
-
-        return true;
     }
 
     bool ExportMeshes()
@@ -193,7 +206,8 @@ public class PartsExporter : MonoBehaviour {
     private void Awake()
     {
         baseImportPath = Path.Combine(Application.streamingAssetsPath, LdConstant.LD_PARTS_PATH);
-        canonicalPathDic = new Dictionary<string, string>();
+
+        canonicalPathDic = new Dictionary<string, Queue<string>>();
         ldPartsLoader = new LdPartsLoader();
 
         PrepareCanonicalPaths();

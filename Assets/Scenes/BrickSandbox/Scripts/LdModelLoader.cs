@@ -14,7 +14,7 @@ public class LdModelLoader : MonoBehaviour
     // parts list contains only recommended parts
     private Dictionary<string, string> partsListCache;
     // parts path contains paths of all parts
-    private Dictionary<string, string> partsPathCache;
+    private Dictionary<string, Queue<string>> partsPathCache;
 
     private Dictionary<string, LdFileParser.FileLines> fileCache;
     private LdFileParser ldFileParser;
@@ -71,53 +71,25 @@ public class LdModelLoader : MonoBehaviour
         {
             string[] words = readText[i].Split(new[] { ' ' },
                 StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 2)
-                partsPathCache.Add(words[0], words[1]);
+            if (words.Length > 1)
+            {
+                Queue<string> val;
+                if (!partsPathCache.TryGetValue(words[0], out val))
+                {
+                    Queue<string> pathQueue = new Queue<string>();
+                    pathQueue.Enqueue(words[1]);
+                    partsPathCache.Add(words[0], pathQueue);
+                }
+                else
+                {
+                    val.Enqueue(words[1]);
+                }
+            }
         }
 
         Debug.Log(string.Format("Parts path cache is ready.", filePath));
 
         stopWatch.EndTick();
-    }
-
-    private void ExtractSubFileNames(string[] readText, ref HashSet<string> subFileNames)
-    {
-        for (int i = 0; i < readText.Length; ++i)
-        {
-            string line = readText[i];
-
-            line.Replace("\t", " ");
-            line = line.Trim();
-
-            if (line.Length == 0)
-                continue;
-
-            int lineType = (int)Char.GetNumericValue(line[0]);
-            if (lineType == 1)
-            {
-                string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (words.Length < 15)
-                {
-                    Debug.Log(string.Format("Subfile syntax error: {0}", line));
-                    continue;
-                }
-
-                string fname = words[14];
-                for (int j = 15; j < words.Length; ++j)
-                {
-                    fname += words[j];
-                }
-
-                if (usePartAsset)
-                {
-                    string cacheFileName = fname.Replace(@"\", @"/").ToLower();
-                    if (partsListCache.ContainsKey(cacheFileName))
-                        continue;
-                }
-
-                subFileNames.Add(fname.ToLower());
-            }
-        }
     }
 
     private bool ExtractModelName(string line, ref string modelName)
@@ -186,41 +158,37 @@ public class LdModelLoader : MonoBehaviour
 
         if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
-            if (!fileLines.loadCompleted)
-            {
-                ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames);
-                if (localSubFileNames.Count > 0)
-                {
-                    subFileNames.UnionWith(localSubFileNames);
-                }
-                fileCache[cacheFileName].loadCompleted = true;
-            }
+            if (fileLines.loadCompleted)
+                yield break;
+
+            LdSubFileNameLoader.ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames, usePartAsset, partsListCache);
+            fileCache[cacheFileName].loadCompleted = true;
         }
         else
         {
-            string val;
-            if (!partsPathCache.TryGetValue(cacheFileName, out val))
+            Queue<string> pathQueue;
+            if (!partsPathCache.TryGetValue(cacheFileName, out pathQueue) || pathQueue.Count==0)
             {
                 Debug.Log(string.Format("Parts path has no {0}", cacheFileName));
+                yield break;
             }
-            else
-            {
-                string filePath = Path.Combine(GetBaseImportPath(), val);
 
-                AsyncFileLoader afileLoader = new AsyncFileLoader();
-                yield return StartCoroutine(afileLoader.LoadFile(filePath));
+            string val = pathQueue.Peek();
+            string filePath = Path.Combine(GetBaseImportPath(), val);
 
-                string[] readText;
-                if (!afileLoader.GetSplitLines(out readText))
-                    yield break;
+            AsyncFileLoader afileLoader = new AsyncFileLoader();
+            yield return StartCoroutine(afileLoader.LoadFile(filePath));
 
-                ExtractSubFileNames(readText, ref localSubFileNames);
-                if (localSubFileNames.Count > 0)
-                {
-                    subFileNames.UnionWith(localSubFileNames);
-                }
-                fileCache.Add(cacheFileName, new LdFileParser.FileLines(val, readText));
-            }
+            string[] readText;
+            if (!afileLoader.GetSplitLines(out readText))
+                yield break;
+
+            LdSubFileNameLoader.ExtractSubFileNames(readText, ref localSubFileNames, usePartAsset, partsListCache);
+            fileCache.Add(cacheFileName, new LdFileParser.FileLines(val, readText));
+        }
+        if (localSubFileNames.Count > 0)
+        {
+            subFileNames.UnionWith(localSubFileNames);
         }
     }
 
@@ -296,7 +264,7 @@ public class LdModelLoader : MonoBehaviour
     private void Awake()
     {
         partsListCache = new Dictionary<string, string>();
-        partsPathCache = new Dictionary<string, string>();
+        partsPathCache = new Dictionary<string, Queue<string>>();
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
         ldFileParser = new LdFileParser();
         model = null;

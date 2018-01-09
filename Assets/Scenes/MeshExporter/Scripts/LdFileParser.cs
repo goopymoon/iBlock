@@ -39,7 +39,7 @@ public class LdFileParser
     private enum eWinding { CCW = 0, CW };
 
     private bool isUsingPartsAsset;
-    private Dictionary<string, string> pathCache;
+    private Dictionary<string, Queue<string>> pathCache;
     private Dictionary<string, FileLines> fileCache;
     private Dictionary<string, BrickMesh> brickCache;
 
@@ -369,16 +369,23 @@ public class LdFileParser
         return true;
     }
 
-    private bool IsNeedMerge(string fileName)
+    private bool IsNeedMerge(string parentName, string fileName)
     {
         string ext = Path.GetExtension(fileName).ToLower();
         if (ext != ".dat")
             return false;
 
-        string filePath;
-        if (pathCache.TryGetValue(fileName, out filePath))
+        if (!isUsingPartsAsset)
         {
-            string dirName = Path.GetDirectoryName(filePath);
+            ext = Path.GetExtension(parentName).ToLower();
+            if (ext == ".dat")
+                return true;
+        }
+
+        Queue<string> filePathQueue;
+        if (pathCache.TryGetValue(fileName, out filePathQueue) && filePathQueue.Count > 0)
+        {
+            string dirName = Path.GetDirectoryName(filePathQueue.Peek());
             return (dirName != "parts");
         }
 
@@ -429,7 +436,7 @@ public class LdFileParser
         }
         else
         {
-            forceMerge = IsNeedMerge(fileName);
+            forceMerge = IsNeedMerge(parentMesh.name, fileName);
             if (forceMerge)
                 parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
             else
@@ -440,7 +447,7 @@ public class LdFileParser
     }
 
     public bool Start(out BrickMesh brickMesh, string modelName,
-        Dictionary<string, string> pCache, Dictionary<string, FileLines> fCache,
+        Dictionary<string, Queue<string>> pCache, Dictionary<string, FileLines> fCache,
         Matrix4x4 trMatrix, bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
