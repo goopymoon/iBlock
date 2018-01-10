@@ -54,18 +54,14 @@ public class LdModelLoader : MonoBehaviour
         stopWatch.EndTick();
     }
 
-    public IEnumerator LoadPartsPathFile()
+    private void LoadPartsPathFile()
     {
-        StopWatch stopWatch = new StopWatch("LoadPartsPathFile");
+        TextAsset textFile = Resources.Load(LdConstant.PARTS_PATH_LIST_FNAME) as TextAsset;
+        if (textFile == null)
+            return;
 
-        var filePath = Path.Combine(GetBaseImportPath(), LdConstant.PARTS_PATH_LIST_FNAME);
-
-        AsyncFileLoader afileLoader = new AsyncFileLoader();
-        yield return StartCoroutine(afileLoader.LoadFile(filePath));
-
-        string[] readText;
-        if (!afileLoader.GetSplitLines(out readText))
-            yield break;
+        string[] readText = textFile.text.Split(
+                Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
         for (int i = 0; i < readText.Length; ++i)
         {
@@ -87,9 +83,7 @@ public class LdModelLoader : MonoBehaviour
             }
         }
 
-        Debug.Log(string.Format("Parts path cache is ready.", filePath));
-
-        stopWatch.EndTick();
+        Debug.Log("Parts path list is ready.");
     }
 
     private bool ExtractModelName(string line, ref string modelName)
@@ -243,8 +237,9 @@ public class LdModelLoader : MonoBehaviour
     {
         usePartAsset = usePreparedPartAsset;
 
+        LoadPartsPathFile();
+
         yield return StartCoroutine("LoadPartsListFile");
-        yield return StartCoroutine("LoadPartsPathFile");
         yield return StartCoroutine("LoadMPDFile", fileName);
 
         LdFileParser.FileLines val;

@@ -28,6 +28,7 @@
     public const string LD_CONFIG_FNAME = "ldconfig.ldr";
     public const string LD_PARTS_PATH = "ldparts";
     public const string PARTS_LIST_FNAME = "parts.lst";
+    public const string PARTS_PATH_LIST_PATH = "Assets/Resources/";
     public const string PARTS_PATH_LIST_FNAME = "partspath.lst";
 
     static public short GetEffectiveColorIndex(short localColor, short parentColor)

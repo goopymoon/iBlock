@@ -14,8 +14,8 @@ public class PartsExporter : MonoBehaviour {
     public readonly string[] subPath = { "parts", "parts/s", "p/8", "p/48", "p" };
     public readonly string[] subBasePath = { "parts", "parts", "p", "p", "p" };
     // Export path
-    public readonly string partMeshOutPath = "Assets/Resources/Parts/Meshes/";
-    public readonly string partPrefabOutPath = "Assets/Resources/Parts/Prefabs/";
+    public readonly string partsMeshOutPath = "Assets/Resources/Parts/Meshes/";
+    public readonly string partsPrefabOutPath = "Assets/Resources/Parts/Prefabs/";
 
     public GameObject brickPrefab;
     public bool exportAll = false;
@@ -80,8 +80,8 @@ public class PartsExporter : MonoBehaviour {
                 AddSearchPath(i, fileName);
         }
 
-        // Print for Debugging
-        string outFile = Path.Combine(baseImportPath, LdConstant.PARTS_PATH_LIST_FNAME);
+        // Save partspath.lst file
+        string outFile = Path.Combine(LdConstant.PARTS_PATH_LIST_PATH, LdConstant.PARTS_PATH_LIST_FNAME) + ".txt";
         using (StreamWriter file = new StreamWriter(outFile))
         {
             foreach (KeyValuePair<string, Queue<string>> entry in canonicalPathDic)
@@ -110,7 +110,7 @@ public class PartsExporter : MonoBehaviour {
         string meshName = Path.ChangeExtension(fname, ".asset");
         string prefabName = Path.ChangeExtension(fname, ".prefab");
 
-        if (File.Exists(partMeshOutPath + meshName) && File.Exists(partPrefabOutPath + prefabName))
+        if (File.Exists(partsMeshOutPath + meshName) && File.Exists(partsPrefabOutPath + prefabName))
         {
             Debug.Log(string.Format("Skip {0}, {1}", meshName, prefabName));
             return true;
@@ -127,9 +127,9 @@ public class PartsExporter : MonoBehaviour {
         MeshFilter mf = go.GetComponent<MeshFilter>();
         if (mf)
         {
-            AssetDatabase.CreateAsset(mf.sharedMesh, partMeshOutPath + meshName);
+            AssetDatabase.CreateAsset(mf.sharedMesh, partsMeshOutPath + meshName);
 
-            var prefab = PrefabUtility.CreateEmptyPrefab(partPrefabOutPath + prefabName);
+            var prefab = PrefabUtility.CreateEmptyPrefab(partsPrefabOutPath + prefabName);
             PrefabUtility.ReplacePrefab(go, prefab, ReplacePrefabOptions.ConnectToPrefab);
 
             return true;
