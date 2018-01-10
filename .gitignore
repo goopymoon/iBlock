@@ -11,8 +11,6 @@
 /Assets/StreamingAssets/**/**/*.meta
 
 # Exported parts asset
-/Assets/Resources/Parts/Meshes/**
-/Assets/Resources/Parts/Prefabs/**
 /Assets/Resources/*.zip
 /Assets/Resources/*.zip.meta
 
