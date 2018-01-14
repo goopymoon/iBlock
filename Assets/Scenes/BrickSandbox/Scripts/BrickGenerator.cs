@@ -14,10 +14,14 @@ public class BrickGenerator : MonoBehaviour
 
     private GameObject modelObj;
 
-    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent, 
+    private IEnumerator CreateMesh(GameObjId brickMeshId, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        if (brickMesh == null || brickMesh.name == null)
+        if (!brickMeshId.IsValid())
+            yield break;
+
+        BrickMesh brickMesh = BrickMeshManager.Instance.Get(brickMeshId);
+        if (brickMesh == null)
             yield break;
 
         GameObject go = null;
@@ -25,7 +29,7 @@ public class BrickGenerator : MonoBehaviour
 
         if (usePartAsset && brickMesh.IsPartAsset)
         {
-            string path = @"Parts/Prefabs/" + Path.GetFileNameWithoutExtension(brickMesh.name);
+            string path = @"Parts/Prefabs/" + Path.GetFileNameWithoutExtension(brickMesh.Name);
             GameObject partObj = Resources.Load(path) as GameObject;
             if (!partObj)
             {
@@ -45,7 +49,7 @@ public class BrickGenerator : MonoBehaviour
         if (modelObj == null)
             modelObj = go;
 
-        go.name = brickMesh.name;
+        go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(parent);
 
         if (isMeshExist)
@@ -53,11 +57,11 @@ public class BrickGenerator : MonoBehaviour
             GetComponent<BrickController>().Register(go);
         }
 
-        for (int i = 0; i < brickMesh.children.Count; ++i)
+        for (int i = 0; i < brickMesh.Children.Count; ++i)
         {
-            bool invertFlag = invertNext ^ brickMesh.invertNext;
-            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.brickColor, parentBrickColor);
-            yield return StartCoroutine(CreateMesh(brickMesh.children[i], go.transform, invertFlag, accuColor));
+            bool invertFlag = invertNext ^ brickMesh.InvertNext;
+            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
+            yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, invertFlag, accuColor));
         }
     }
 
@@ -100,19 +104,22 @@ public class BrickGenerator : MonoBehaviour
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
         StopWatch stopWatch = new StopWatch("Create Mesh");
-        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
+        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model.Id, transform));
         stopWatch.EndTick();
 
-        if (modelObj == null)
-            yield break;
+        if (modelObj)
+        {
+            InitCameraZoomRange(modelObj);
+            SnapToTerrain(modelObj);
 
-        InitCameraZoomRange(modelObj);
-        SnapToTerrain(modelObj);
+            BrickMeshManager.Instance.Dump();
+        }
     }
 
     private void Awake()
     {
         BrickMaterial.Instance.Initialize();
+        BrickMeshManager.Instance.Initialize();
     }
 
     // Use this for initialization

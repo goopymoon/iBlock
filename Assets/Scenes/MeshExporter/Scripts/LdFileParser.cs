@@ -11,21 +11,21 @@ public class LdFileParser
 {
     public class FileLines
     {
-        public bool loadCompleted { get; set; }
-        public string filePath { get; private set; }
+        public bool LoadCompleted { get; set; }
+        public string FilePath { get; private set; }
         public List<string> cache = new List<string>();
 
         public FileLines()
         {
-            loadCompleted = false;
-            filePath = "";
+            LoadCompleted = false;
+            FilePath = "";
         }
 
         public FileLines(string path, string[] lines)
         {
-            loadCompleted = true;
+            LoadCompleted = true;
 
-            filePath = path;
+            FilePath = path;
             cache.AddRange(lines);
         }
 
@@ -197,11 +197,11 @@ public class LdFileParser
         Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
-        int lastIndex = brickMesh.vertices.Count;
+        int lastIndex = brickMesh.Vertices.Count;
 
-        brickMesh.vertices.Add(v1);
-        brickMesh.vertices.Add(v2);
-        brickMesh.vertices.Add(v3);
+        brickMesh.Vertices.Add(v1);
+        brickMesh.Vertices.Add(v2);
+        brickMesh.Vertices.Add(v3);
 
         bool renderWinding = (winding == eWinding.CW);
         if (accumInvert) renderWinding = !renderWinding;
@@ -209,19 +209,19 @@ public class LdFileParser
         // winding is for RHS so apply reverse for Unity
         if (renderWinding)
         {
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 1);
-            brickMesh.triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 1);
+            brickMesh.Triangles.Add(lastIndex + 2);
         }
         else
         {
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 2);
-            brickMesh.triangles.Add(lastIndex + 1);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 1);
         }
 
         for (int i = 0; i < 3; ++i)
-            brickMesh.colorIndices.Add(vtColorIndex);
+            brickMesh.ColorIndices.Add(vtColorIndex);
 
         return true;
     }
@@ -246,39 +246,39 @@ public class LdFileParser
         Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
         Vector3 v4 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
 
-        int lastIndex = brickMesh.vertices.Count;
+        int lastIndex = brickMesh.Vertices.Count;
 
-        brickMesh.vertices.Add(v1);
-        brickMesh.vertices.Add(v2);
-        brickMesh.vertices.Add(v3);
-        brickMesh.vertices.Add(v4);
+        brickMesh.Vertices.Add(v1);
+        brickMesh.Vertices.Add(v2);
+        brickMesh.Vertices.Add(v3);
+        brickMesh.Vertices.Add(v4);
 
         bool renderWinding = (winding == eWinding.CW);
         if (accumInvert) renderWinding = !renderWinding;
 
         if (renderWinding)
         {
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 1);
-            brickMesh.triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 1);
+            brickMesh.Triangles.Add(lastIndex + 2);
 
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 2);
-            brickMesh.triangles.Add(lastIndex + 3);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 3);
         }
         else
         {
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 2);
-            brickMesh.triangles.Add(lastIndex + 1);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 1);
 
-            brickMesh.triangles.Add(lastIndex + 0);
-            brickMesh.triangles.Add(lastIndex + 3);
-            brickMesh.triangles.Add(lastIndex + 2);
+            brickMesh.Triangles.Add(lastIndex + 0);
+            brickMesh.Triangles.Add(lastIndex + 3);
+            brickMesh.Triangles.Add(lastIndex + 2);
         }
 
         for (int i = 0; i < 4; ++i)
-            brickMesh.colorIndices.Add(vtColorIndex);
+            brickMesh.ColorIndices.Add(vtColorIndex);
 
         return true;
     }
@@ -362,7 +362,7 @@ public class LdFileParser
             }
         }
 
-        brickMesh.bfcEnabled = certified == eCertified.TRUE;
+        brickMesh.BfcEnabled = certified == eCertified.TRUE;
 
         //Debug.Log(string.Format("Parsing model finished: {0}", modelName));
 
@@ -401,7 +401,7 @@ public class LdFileParser
 
         if (brickCache.ContainsKey(cacheFileName))
         {
-            subBrickMesh = new BrickMesh(brickCache[cacheFileName]);
+            subBrickMesh = new BrickMesh(brickCache[cacheFileName], true);
         }
         else
         {
@@ -416,9 +416,14 @@ public class LdFileParser
 
                 subBrickMesh = new BrickMesh(cacheFileName, true);
                 if (parentMesh == null)
+                {
                     parentMesh = subBrickMesh;
+                }
                 else
-                    parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                {
+                    subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
+                    parentMesh.AddChildBrick(subBrickMesh.Id);
+                }
 
                 return true;
             }
@@ -436,11 +441,16 @@ public class LdFileParser
         }
         else
         {
-            forceMerge = IsNeedMerge(parentMesh.name, fileName);
+            forceMerge = IsNeedMerge(parentMesh.Name, fileName);
             if (forceMerge)
+            {
                 parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
+            }
             else
-                parentMesh.AddChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+            {
+                subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
+                parentMesh.AddChildBrick(subBrickMesh.Id);
+            }
         }
 
         return true;

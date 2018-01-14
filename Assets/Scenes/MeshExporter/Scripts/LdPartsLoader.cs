@@ -41,11 +41,11 @@ public class LdPartsLoader
 
         if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
-            if (fileLines.loadCompleted)
+            if (fileLines.LoadCompleted)
                 return true;
 
             LdSubFileNameLoader.ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames);
-            fileCache[cacheFileName].loadCompleted = true;
+            fileCache[cacheFileName].LoadCompleted = true;
         }
         else
         {
