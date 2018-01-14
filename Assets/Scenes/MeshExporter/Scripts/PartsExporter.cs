@@ -161,7 +161,7 @@ public class PartsExporter : MonoBehaviour {
 
         GameObject go = (GameObject)Instantiate(brickPrefab);
  
-        go.name = brickMesh.name;
+        go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(transform);
         if (!go.GetComponent<Brick>().CreateMesh(brickMesh, LdConstant.LD_COLOR_MAIN, false))
         {

@@ -11,12 +11,12 @@ public static class BrickMeshOptimizer
 
     public static void Optimize(this BrickMesh mesh, float angle)
     {
-        if (mesh.vertices.Count == 0)
+        if (mesh.Vertices.Count == 0)
             return;
 
-        var triangles = mesh.triangles;
-        var vertices = mesh.vertices;
-        var colors = mesh.colorIndices;
+        var triangles = mesh.Triangles;
+        var vertices = mesh.Vertices;
+        var colors = mesh.ColorIndices;
         var triNormals = new Vector3[triangles.Count / 3]; //Holds the normal of each triangle
 
         //Debug.Log(string.Format("Start optimize {0}: vtCnt:{1}, triCnt:{2}, colorCnt:{3}", 
@@ -163,8 +163,8 @@ public static class BrickMeshOptimizer
 
             //Debug.Log(string.Format("Reduced vertices of {0} : {1} to {2}", mesh.name, vertices.Count, shrinkedVertices.Count));
 
-            mesh.vertices = shrinkedVertices;
-            mesh.colorIndices = shrinkedColors;
+            mesh.Vertices = shrinkedVertices;
+            mesh.ColorIndices = shrinkedColors;
         }
     }
 

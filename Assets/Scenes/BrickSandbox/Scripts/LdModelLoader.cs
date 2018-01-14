@@ -152,11 +152,11 @@ public class LdModelLoader : MonoBehaviour
 
         if (fileCache.TryGetValue(cacheFileName, out fileLines))
         {
-            if (fileLines.loadCompleted)
+            if (fileLines.LoadCompleted)
                 yield break;
 
             LdSubFileNameLoader.ExtractSubFileNames(fileLines.cache.ToArray(), ref localSubFileNames, usePartAsset, partsListCache);
-            fileCache[cacheFileName].loadCompleted = true;
+            fileCache[cacheFileName].LoadCompleted = true;
         }
         else
         {

@@ -114,7 +114,7 @@ public class Brick : MonoBehaviour
         TransformModel(brickMesh);
 
         Mesh mesh = go.GetComponent<MeshFilter>().mesh;
-        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
+        int matIndexOffset = brickMesh.BfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
         // The colors will be created.
         Color32[] colors;
@@ -152,7 +152,7 @@ public class Brick : MonoBehaviour
     {
         TransformModel(brickMesh);
 
-        if (brickMesh.vertices.Count == 0)
+        if (brickMesh.Vertices.Count == 0)
             return false;
 
         Vector3[] vts;
@@ -160,7 +160,7 @@ public class Brick : MonoBehaviour
         int[] opaqueTris;
         int[] transparentTris;
         Mesh mesh = new Mesh();
-        int matIndexOffset = brickMesh.bfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
+        int matIndexOffset = brickMesh.BfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
         brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext,
             out vts, out colors, out opaqueTris, out transparentTris);
