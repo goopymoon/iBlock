@@ -227,6 +227,7 @@ public class PartsExporter : MonoBehaviour {
 
     // Use this for initialization
     void Start () {
+        BrickMeshManager.Instance.Initialize();
     }
 
     // Update is called once per frame
