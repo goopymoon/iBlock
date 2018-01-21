@@ -250,7 +250,7 @@ public class LdModelLoader : MonoBehaviour
             yield break;
         }
 
-        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, Matrix4x4.identity, usePartAsset))
+        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, usePartAsset))
             yield break;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));

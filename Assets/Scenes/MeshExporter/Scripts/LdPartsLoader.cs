@@ -105,7 +105,7 @@ public class LdPartsLoader
                 return false;
         }
 
-        return ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, Matrix4x4.identity, false);
+        return ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, false);
     }
 
     public bool Initialize()

@@ -14,13 +14,9 @@ public class BrickGenerator : MonoBehaviour
 
     private GameObject modelObj;
 
-    private IEnumerator CreateMesh(GameObjId brickMeshId, Transform parent, 
+    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent, 
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        if (!brickMeshId.IsValid())
-            yield break;
-
-        BrickMesh brickMesh = BrickMeshManager.Instance.Get(brickMeshId);
         if (brickMesh == null)
             yield break;
 
@@ -59,9 +55,9 @@ public class BrickGenerator : MonoBehaviour
 
         for (int i = 0; i < brickMesh.Children.Count; ++i)
         {
-            bool invertFlag = invertNext ^ brickMesh.InvertNext;
+            bool accInvert = invertNext ^ brickMesh.InvertNext;
             short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
-            yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, invertFlag, accuColor));
+            yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, accInvert, accuColor));
         }
     }
 
@@ -104,7 +100,7 @@ public class BrickGenerator : MonoBehaviour
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
         StopWatch stopWatch = new StopWatch("Create Mesh");
-        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model.Id, transform));
+        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
         stopWatch.EndTick();
 
         if (modelObj)
@@ -112,7 +108,7 @@ public class BrickGenerator : MonoBehaviour
             InitCameraZoomRange(modelObj);
             SnapToTerrain(modelObj);
 
-            BrickMeshManager.Instance.Dump();
+            BrickMeshManager.Instance.DumpBrickMesh();
         }
     }
 

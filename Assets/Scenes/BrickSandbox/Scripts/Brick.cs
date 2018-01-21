@@ -152,7 +152,7 @@ public class Brick : MonoBehaviour
     {
         TransformModel(brickMesh);
 
-        if (brickMesh.Vertices.Count == 0)
+        if (!brickMesh.HasVertices())
             return false;
 
         Vector3[] vts;
@@ -162,8 +162,7 @@ public class Brick : MonoBehaviour
         Mesh mesh = new Mesh();
         int matIndexOffset = brickMesh.BfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
-        brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext,
-            out vts, out colors, out opaqueTris, out transparentTris);
+        brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext, out vts, out colors, out opaqueTris, out transparentTris);
 
         mesh.vertices = vts;
         mesh.colors32 = colors;

@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class BrickMeshManager : MonoBehaviour
 {
-    private Dictionary<uint, BrickMesh> pool;
-    private uint curId = 0;
+    private Dictionary<string, BrickMeshInfo> infoPool;
+    private Dictionary<string, BrickMesh> brickPool;
 
     private static BrickMeshManager _instance;
     public static BrickMeshManager Instance
@@ -27,19 +27,36 @@ public class BrickMeshManager : MonoBehaviour
         }
     }
 
-    public GameObjId Register(BrickMesh brick)
+    public bool RegisterBrickMeshInfo(BrickMeshInfo info)
     {
-        GameObjId nextId = new GameObjId(++curId);
-        pool.Add(nextId.Val, brick);
+        if (infoPool.ContainsKey(info.Name))
+        {
+            Debug.Log(string.Format("Cannot register duplicated brickMeshInfo: {0}", info.Name));
+            return false;
+        }
 
-        return nextId; ;
+        info.Optimize();
+        infoPool.Add(info.Name, info);
+
+        //Debug.Log(string.Format("Registered BrickMeshInfo: {0}", info.Name));
+        return true;
     }
 
-    public BrickMesh Get(GameObjId id)
+    public bool RegisterBrickMesh(string name, BrickMesh brick)
+    {
+        if (brickPool.ContainsKey(name))
+        {
+            return false;
+        }
+        brickPool.Add(name, brick);
+        return true;
+    }
+
+    public BrickMesh GetBrickMesh(string name)
     {
         BrickMesh brick;
 
-        if (pool.TryGetValue(id.Val, out brick))
+        if (brickPool.TryGetValue(name, out brick))
         {
             return brick;
         }
@@ -47,15 +64,40 @@ public class BrickMeshManager : MonoBehaviour
         return null;
     }
 
-    public bool Remove(GameObjId id)
+    public BrickMeshInfo GetBrickMeshInfo(string name)
     {
-        return pool.Remove(id.Val);
+        BrickMeshInfo val;
+        if (infoPool.TryGetValue(name, out val))
+        {
+            return val;
+        }
+
+        return null;
     }
 
-    public void Dump()
+    public bool RemoveBrickMeshInfo(string name)
     {
-        Debug.Log(string.Format("Pool size is {0}", pool.Count));
-        //foreach(KeyValuePair<uint, BrickMesh> entry in pool)
+        return infoPool.Remove(name);
+    }
+
+    public void RemoveBrickMesh(BrickMesh brickMesh)
+    {
+        brickPool.Remove(brickMesh.Name);
+    }
+
+    public void DumpBrickMeshInfo()
+    {
+        Debug.Log(string.Format("BrickMeshInfo Pool size is {0}", infoPool.Count));
+        //foreach(KeyValuePair<uint, BrickMeshInfo> entry in infoPool)
+        //{
+        //    Debug.Log(string.Format("{0} {1}", entry.Key, entry.Value.Name));
+        //}
+    }
+
+    public void DumpBrickMesh()
+    {
+        Debug.Log(string.Format("BrickMesh Pool size is {0}", brickPool.Count));
+        //foreach(KeyValuePair<uint, BrickMesh> entry in brickPool)
         //{
         //    Debug.Log(string.Format("{0} {1}", entry.Key, entry.Value.Name));
         //}
@@ -63,6 +105,7 @@ public class BrickMeshManager : MonoBehaviour
 
     public void Initialize()
     {
-        pool = new Dictionary<uint, BrickMesh>();
+        infoPool = new Dictionary<string, BrickMeshInfo>();
+        brickPool = new Dictionary<string, BrickMesh>();
     }
 }

@@ -7,133 +7,124 @@ using System;
 [Serializable]
 public class BrickMesh
 {
-    public GameObjId Id { get; set; } 
+    public bool IsPartAsset { get; set; }
+
     public string Name { get; set; }
     public bool BfcEnabled { get; set; }
     public bool InvertNext { get; set; }
     public short BrickColor { get; private set; }
-    public bool IsPartAsset { get; private set; }
+    public Matrix4x4 LocalTr { get; private set; }
+    public List<BrickMesh> Children { get; set; }
 
-    public List<Vector3> Vertices { get; set; }
-    public List<short> ColorIndices { get; set; }
-    public List<int> Triangles { get; set; }
-    public List<GameObjId> Children { get; set; }
+    private BrickMeshInfo meshInfo { get; set; }
 
-    private Matrix4x4 localTr;
-
-    public BrickMesh(string meshName, bool isAsset=false)
+    private BrickMesh(string meshName)
     {
-        Id = BrickMeshManager.Instance.Register(this);
-
         Name = meshName;
-        IsPartAsset = isAsset;
-
         BfcEnabled = false;
         InvertNext = false;
         BrickColor = LdConstant.LD_COLOR_MAIN;
-        localTr = Matrix4x4.identity;
+        LocalTr = Matrix4x4.identity;
+        meshInfo = BrickMeshManager.Instance.GetBrickMeshInfo(meshName);
+        IsPartAsset = false;
 
-        Vertices = new List<Vector3>();
-        ColorIndices = new List<short>();
-        Triangles = new List<int>();
-        Children = new List<GameObjId>();
+        Children = new List<BrickMesh>();
     }
 
-    public BrickMesh(BrickMesh rhs, bool isDuplicate = false)
+    private BrickMesh(BrickMesh rhs)
     {
-        Id = isDuplicate ? BrickMeshManager.Instance.Register(this) : rhs.Id;
-
         Name = rhs.Name;
-        IsPartAsset = rhs.IsPartAsset;
-
         BfcEnabled = rhs.BfcEnabled;
         InvertNext = rhs.InvertNext;
         BrickColor = rhs.BrickColor;
-        localTr = rhs.localTr;
+        LocalTr = rhs.LocalTr;
+        meshInfo = rhs.meshInfo;
+        IsPartAsset = false;
 
-        Vertices = rhs.Vertices;
-        ColorIndices = rhs.ColorIndices;
-        Triangles = rhs.Triangles;
-        Children = rhs.Children;
+        Children = new List<BrickMesh>();
+        foreach (BrickMesh entry in rhs.Children)
+        {
+            Children.Add(new BrickMesh(entry));
+        }
     }
 
-    public void PushTriangle(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, bool renderWinding)
+    public static void Create(string meshFName, out BrickMesh brickMesh)
     {
-        int lastIndex = Vertices.Count;
-
-        Vertices.Add(v1);
-        Vertices.Add(v2);
-        Vertices.Add(v3);
-
-        ColorIndices.Add(vtColorIndex);
-        ColorIndices.Add(vtColorIndex);
-        ColorIndices.Add(vtColorIndex);
-
-        // winding is for RHS so apply reverse for Unity
-        if (renderWinding)
+        BrickMesh cache = BrickMeshManager.Instance.GetBrickMesh(meshFName);
+        if (cache == null)
         {
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 1);
-            Triangles.Add(lastIndex + 2);
+            brickMesh = new BrickMesh(meshFName);
+            BrickMeshManager.Instance.RegisterBrickMesh(meshFName, brickMesh);
         }
         else
         {
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 2);
-            Triangles.Add(lastIndex + 1);
+            brickMesh = new BrickMesh(cache);
         }
     }
 
-    public void PushQuad(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, ref Vector3 v4, bool renderWinding)
+    public bool IsRegisteredMeshInfo()
     {
-        int lastIndex = Vertices.Count;
-
-        Vertices.Add(v1);
-        Vertices.Add(v2);
-        Vertices.Add(v3);
-        Vertices.Add(v4);
-
-        ColorIndices.Add(vtColorIndex);
-        ColorIndices.Add(vtColorIndex);
-        ColorIndices.Add(vtColorIndex);
-        ColorIndices.Add(vtColorIndex);
-
-        if (renderWinding)
-        {
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 1);
-            Triangles.Add(lastIndex + 2);
-
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 2);
-            Triangles.Add(lastIndex + 3);
-        }
-        else
-        {
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 2);
-            Triangles.Add(lastIndex + 1);
-
-            Triangles.Add(lastIndex + 0);
-            Triangles.Add(lastIndex + 3);
-            Triangles.Add(lastIndex + 2);
-        }
+        return (meshInfo != null);
     }
 
-    public void Optimize(float angle = BrickMeshOptimizer.SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE)
+    public void CreateMeshInfo()
     {
-        BrickMeshOptimizer.Optimize(this, angle);
+        meshInfo = new BrickMeshInfo(Name);
     }
 
-    public bool AddChildBrick(GameObjId childId)
+    public void RefreshMeshInfo()
     {
-        if (!childId.IsValid())
+        if (meshInfo == null)
+            meshInfo = BrickMeshManager.Instance.GetBrickMeshInfo(Name);
+    }
+
+    public bool PushTriangle(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, bool renderWinding)
+    {
+        if (meshInfo == null)
+            return false;
+
+        meshInfo.PushTriangle(vtColorIndex, ref v1, ref v2, ref v3, renderWinding);
+        return true;
+    }
+
+    public bool PushQuad(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, ref Vector3 v4, bool renderWinding)
+    {
+        if (meshInfo == null)
+            return false;
+
+        meshInfo.PushQuad(vtColorIndex, ref v1, ref v2, ref v3, ref v4, renderWinding);
+        return true;
+    }
+
+    public bool FinalizeBrickMeshInfo(bool bfc)
+    {
+        if (meshInfo == null)
+            return false;
+
+        BfcEnabled = bfc;
+
+        return BrickMeshManager.Instance.RegisterBrickMeshInfo(meshInfo);
+    }
+
+    public bool HasVertices()
+    {
+        return (meshInfo != null ? (meshInfo.Vertices.Count > 0) : false);
+    }
+
+    public void AddStudInfo(Matrix4x4 trMatrix, short colorIndex, bool inverted)
+    {
+        meshInfo.studInfos.Add(new StudInfo(trMatrix, colorIndex, inverted));
+    }
+
+    public bool AddChildBrick(BrickMesh child)
+    {
+        if (child == null)
         {
-            Debug.Log(string.Format("child brick id is not valid"));
+            Debug.Log(string.Format("child brick is not valid"));
             return false;
         }
 
-        Children.Add(childId);
+        Children.Add(child);
         return true;
     }
 
@@ -141,111 +132,30 @@ public class BrickMesh
     {
         InvertNext = invert;
         BrickColor = color;
-        localTr = trMatrix;
+        LocalTr = trMatrix;
     }
 
-    public void MergeChildBrick(bool invert, bool invertByMatrix, short color, Matrix4x4 trMatrix, BrickMesh child)
+    public void MergeChildBrick(bool inverted, short color, Matrix4x4 trMatrix, BrickMesh child)
     {
-        if (child.Vertices.Count != 0 || child.Children.Count != 0)
+        if (meshInfo != null && child.meshInfo != null)
         {
-            bool inverted = invert ^ invertByMatrix;
-            int vtCnt = Vertices.Count;
-
-            for (int i = 0; i < child.Vertices.Count; ++i)
+            if (child.meshInfo.Vertices.Count != 0 || child.Children.Count != 0)
             {
-                Vertices.Add(trMatrix.MultiplyPoint3x4(child.Vertices[i]));
-            }
-
-            for (int i = 0; i < child.ColorIndices.Count; ++i)
-            {
-                ColorIndices.Add(LdConstant.GetEffectiveColorIndex(child.ColorIndices[i], color));
-            }
-
-            for (int i = 0; i < child.Triangles.Count; i += 3)
-            {
-                if (inverted)
-                {
-                    Triangles.Add(vtCnt + child.Triangles[i]);
-                    Triangles.Add(vtCnt + child.Triangles[i + 2]);
-                    Triangles.Add(vtCnt + child.Triangles[i + 1]);
-                }
-                else
-                {
-                    Triangles.Add(vtCnt + child.Triangles[i]);
-                    Triangles.Add(vtCnt + child.Triangles[i + 1]);
-                    Triangles.Add(vtCnt + child.Triangles[i + 2]);
-                }
+                meshInfo.MergeChildBrick(inverted, color, trMatrix, child.meshInfo);
             }
         }
 
-        BrickMeshManager.Instance.Remove(child.Id);
+        BrickMeshManager.Instance.RemoveBrickMesh(child);
     }
 
     public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
     {
-        MatrixUtil.DecomposeMatrix(localTr, out localPosition, out localRotation, out localScale);
+        MatrixUtil.DecomposeMatrix(LocalTr, out localPosition, out localRotation, out localScale);
     }
 
-    private void GetVertices(out Vector3[] vts)
+    public void Optimize(float angle = BrickMeshOptimizer.SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE)
     {
-        vts = Vertices.ToArray();
-    }
-
-    private void GetColors(short parentColor, out Color32[] colList)
-    {
-        colList = new Color32[ColorIndices.Count];
-
-        for (int i = 0; i < ColorIndices.Count; ++i)
-        {
-            short colorIndex = LdConstant.GetEffectiveColorIndex(ColorIndices[i], parentColor);
-            colList[i] = LdColorTable.Instance.GetColor(colorIndex);
-        }
-    }
-
-    private void GetTriangles(bool invert,
-    ref Color32[] colors, ref List<int> opaqueTris, ref List<int> transparentTris, int offset = 0)
-    {
-        bool invertFlag = invert ^ InvertNext;
-
-        for (int i = 0; i < Triangles.Count; i += 3)
-        {
-            int[] vtIndex = new int[3];
-            int alphaCnt = 0;
-
-            vtIndex[0] = offset + Triangles[i];
-            if (!invertFlag)
-            {
-                vtIndex[1] = offset + Triangles[i + 1];
-                vtIndex[2] = offset + Triangles[i + 2];
-            }
-            else
-            {
-                vtIndex[1] = offset + Triangles[i + 2];
-                vtIndex[2] = offset + Triangles[i + 1];
-            }
-
-            for (int j = 0; j < 3; ++j)
-            {
-                if (colors[vtIndex[j]].a < 255)
-                    alphaCnt++;
-            }
-
-            Debug.Assert(alphaCnt == 0 || alphaCnt == 3,
-                string.Format("Alpha count is not zero or three: {0}", alphaCnt));
-
-            if (alphaCnt == 0)
-            {
-                opaqueTris.Add(vtIndex[0]);
-                opaqueTris.Add(vtIndex[1]);
-                opaqueTris.Add(vtIndex[2]);
-            }
-            else if (alphaCnt == 3)
-            {
-                transparentTris.Add(vtIndex[0]);
-                transparentTris.Add(vtIndex[1]);
-                transparentTris.Add(vtIndex[2]);
-            }
-        }
+        BrickMeshOptimizer.Optimize(meshInfo, angle);
     }
 
     public bool GetTobeChangeColors(short parentColor, Mesh mesh, out Color32[] colList)
@@ -323,20 +233,23 @@ public class BrickMesh
         return isModified;
     }
 
-    public void GetRenderMeshInfo(short parentBrickColor, bool invert, 
-        out Vector3[] vts, out Color32[] colors, out int[] opaqueTris, out int[] transparentTris)
+    public void GetRenderMeshInfo(short parentBrickColor, bool invert,
+    out Vector3[] vts, out Color32[] colors, out int[] opaqueTris, out int[] transparentTris)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(BrickColor, parentBrickColor);
 
-        GetVertices(out vts);
-        GetColors(effectiveParentColor, out colors);
-
-        List<int> opaqueTriList = new List<int>();
-        List<int> transparentTriList = new List<int>();
-        GetTriangles(invert, ref colors, ref opaqueTriList, ref transparentTriList);
-
-        opaqueTris = opaqueTriList.ToArray();
-        transparentTris = transparentTriList.ToArray();
+        if (meshInfo != null)
+        {
+            bool inverted = invert ^ InvertNext;
+            meshInfo.GetRenderMeshInfo(effectiveParentColor, inverted, out vts, out colors, out opaqueTris, out transparentTris);
+        }
+        else
+        {
+            vts = null;
+            colors = null;
+            opaqueTris = null;
+            transparentTris = null;
+        }
     }
 
     public void GetRenderMeshReconstructInfo(short parentBrickColor, bool invert, Mesh mesh,

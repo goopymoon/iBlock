@@ -41,11 +41,9 @@ public class LdFileParser
     private bool isUsingPartsAsset;
     private Dictionary<string, Queue<string>> pathCache;
     private Dictionary<string, FileLines> fileCache;
-    private Dictionary<string, BrickMesh> brickCache;
 
     public LdFileParser()
     {
-        brickCache = new Dictionary<string, BrickMesh>();
     }
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -178,8 +176,7 @@ public class LdFileParser
         return true;
     }
 
-    private bool ParseTriInfo(ref BrickMesh brickMesh, string line, 
-        Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
+    private bool ParseTriInfo(ref BrickMesh brickMesh, string line, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 11)
@@ -191,43 +188,15 @@ public class LdFileParser
         if (!ParseColor(words[offset++], out localColor))
             return false;
 
-        short vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
-
-        Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-        Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-        Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-
-        int lastIndex = brickMesh.Vertices.Count;
-
-        brickMesh.Vertices.Add(v1);
-        brickMesh.Vertices.Add(v2);
-        brickMesh.Vertices.Add(v3);
+        Vector3 v1 = ParseVector(words, ref offset);
+        Vector3 v2 = ParseVector(words, ref offset);
+        Vector3 v3 = ParseVector(words, ref offset);
 
         bool renderWinding = (winding == eWinding.CW);
-        if (accumInvert) renderWinding = !renderWinding;
-
-        // winding is for RHS so apply reverse for Unity
-        if (renderWinding)
-        {
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 1);
-            brickMesh.Triangles.Add(lastIndex + 2);
-        }
-        else
-        {
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 2);
-            brickMesh.Triangles.Add(lastIndex + 1);
-        }
-
-        for (int i = 0; i < 3; ++i)
-            brickMesh.ColorIndices.Add(vtColorIndex);
-
-        return true;
+        return brickMesh.PushTriangle(localColor, ref v1, ref v2, ref v3, renderWinding);
     }
 
-    private bool ParseQuadInfo(ref BrickMesh brickMesh, string line, 
-        Matrix4x4 trMatrix, short parentColor, bool accumInvert, eWinding winding)
+    private bool ParseQuadInfo(ref BrickMesh brickMesh, string line, eWinding winding)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 14)
@@ -239,52 +208,16 @@ public class LdFileParser
         if (!ParseColor(words[offset++], out localColor))
             return false;
 
-        short vtColorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
-
-        Vector3 v1 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-        Vector3 v2 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-        Vector3 v3 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-        Vector3 v4 = trMatrix.MultiplyPoint3x4(ParseVector(words, ref offset));
-
-        int lastIndex = brickMesh.Vertices.Count;
-
-        brickMesh.Vertices.Add(v1);
-        brickMesh.Vertices.Add(v2);
-        brickMesh.Vertices.Add(v3);
-        brickMesh.Vertices.Add(v4);
+        Vector3 v1 = ParseVector(words, ref offset);
+        Vector3 v2 = ParseVector(words, ref offset);
+        Vector3 v3 = ParseVector(words, ref offset);
+        Vector3 v4 = ParseVector(words, ref offset);
 
         bool renderWinding = (winding == eWinding.CW);
-        if (accumInvert) renderWinding = !renderWinding;
-
-        if (renderWinding)
-        {
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 1);
-            brickMesh.Triangles.Add(lastIndex + 2);
-
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 2);
-            brickMesh.Triangles.Add(lastIndex + 3);
-        }
-        else
-        {
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 2);
-            brickMesh.Triangles.Add(lastIndex + 1);
-
-            brickMesh.Triangles.Add(lastIndex + 0);
-            brickMesh.Triangles.Add(lastIndex + 3);
-            brickMesh.Triangles.Add(lastIndex + 2);
-        }
-
-        for (int i = 0; i < 4; ++i)
-            brickMesh.ColorIndices.Add(vtColorIndex);
-
-        return true;
+        return brickMesh.PushQuad(localColor, ref v1, ref v2, ref v3, ref v4, renderWinding);
     }
 
-    private bool ParseSubFileInfo(ref BrickMesh brickMesh, string line, 
-        Matrix4x4 trMatrix, short parentColor, bool accumInvert, bool accumInvertByMatrix)
+    private bool ParseSubFileInfo(ref BrickMesh brickMesh, string line, bool accumInvert)
     {
         string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length < 15)
@@ -296,28 +229,21 @@ public class LdFileParser
         if (!ParseColor(words[offset++], out localColor))
             return false;
 
-        short colorIndex = LdConstant.GetEffectiveColorIndex(localColor, parentColor);
-
         Matrix4x4 mLocal = ParseMatrix(words, ref offset);
         string fname = words[offset];
         for (int i = offset + 1; i < words.Length; ++i)
             fname += words[i];
 
-        if (mLocal.determinant < 0)
-            accumInvertByMatrix = !accumInvertByMatrix;
-
-        Matrix4x4 mAcc = trMatrix * mLocal;
-        return TryParseModel(ref brickMesh, fname, mAcc, colorIndex, accumInvert, accumInvertByMatrix);
+        return TryParseModel(ref brickMesh, fname, mLocal, localColor, accumInvert);
     }
 
-    private bool ParseModel(out BrickMesh brickMesh, string modelName, string[] readText, 
-    Matrix4x4 trMatrix, short parentColor = LdConstant.LD_COLOR_MAIN, bool accumInvert = false, bool accumInvertByMatrix = false)
+    private bool ParseModel(ref BrickMesh brickMesh, string[] readText)
     {
-        brickMesh = new BrickMesh(modelName);
-
         eCertified certified = eCertified.NA;
         eWinding winding = eWinding.CCW;
         bool invertNext = false;
+
+        brickMesh.CreateMeshInfo();
 
         for (int i = 0; i < readText.Length; ++i)
         {
@@ -336,7 +262,7 @@ public class LdFileParser
                     ParseBFCInfo(line, ref certified, ref winding, ref invertNext);
                     break;
                 case 1:
-                    if (!ParseSubFileInfo(ref brickMesh, line, trMatrix, parentColor, invertNext ^ accumInvert, accumInvertByMatrix))
+                    if (!ParseSubFileInfo(ref brickMesh, line, invertNext))
                     {
                         Debug.Log(string.Format("ParseSubFileInfo failed: {0}", line));
                         return false;
@@ -344,14 +270,14 @@ public class LdFileParser
                     invertNext = false;
                     break;
                 case 3:
-                    if (!ParseTriInfo(ref brickMesh, line, trMatrix, parentColor, accumInvert, winding))
+                    if (!ParseTriInfo(ref brickMesh, line, winding))
                     {
                         Debug.Log(string.Format("ParseTriInfo failed: {0}", line));
                         return false;
                     }
                     break;
                 case 4:
-                    if (!ParseQuadInfo(ref brickMesh, line, trMatrix, parentColor, accumInvert, winding))
+                    if (!ParseQuadInfo(ref brickMesh, line, winding))
                     {
                         Debug.Log(string.Format("ParseQuadInfo failed: {0}", line));
                         return false;
@@ -362,9 +288,7 @@ public class LdFileParser
             }
         }
 
-        brickMesh.BfcEnabled = certified == eCertified.TRUE;
-
-        //Debug.Log(string.Format("Parsing model finished: {0}", modelName));
+        brickMesh.FinalizeBrickMeshInfo(certified == eCertified.TRUE);
 
         return true;
     }
@@ -393,17 +317,13 @@ public class LdFileParser
     }
 
     private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
-        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false, bool accInvertByMatrix = false)
+        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
         string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
-        BrickMesh subBrickMesh = null;
-        bool forceMerge = false;
+        BrickMesh subBrickMesh = null;    
 
-        if (brickCache.ContainsKey(cacheFileName))
-        {
-            subBrickMesh = new BrickMesh(brickCache[cacheFileName], true);
-        }
-        else
+        BrickMesh.Create(cacheFileName, out subBrickMesh);
+        if (!subBrickMesh.IsRegisteredMeshInfo())
         {
             FileLines val;
             if (!fileCache.TryGetValue(cacheFileName, out val))
@@ -414,7 +334,6 @@ public class LdFileParser
                     return false;
                 }
 
-                subBrickMesh = new BrickMesh(cacheFileName, true);
                 if (parentMesh == null)
                 {
                     parentMesh = subBrickMesh;
@@ -422,17 +341,15 @@ public class LdFileParser
                 else
                 {
                     subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
-                    parentMesh.AddChildBrick(subBrickMesh.Id);
+                    parentMesh.AddChildBrick(subBrickMesh);
                 }
 
+                subBrickMesh.IsPartAsset = true;
                 return true;
             }
 
-            if (!ParseModel(out subBrickMesh, cacheFileName, val.cache.ToArray(), Matrix4x4.identity))
+            if (!ParseModel(ref subBrickMesh, val.cache.ToArray()))
                 return false;
-
-            subBrickMesh.Optimize();
-            brickCache[cacheFileName] = new BrickMesh(subBrickMesh);
         }
 
         if (parentMesh == null)
@@ -441,15 +358,14 @@ public class LdFileParser
         }
         else
         {
-            forceMerge = IsNeedMerge(parentMesh.Name, fileName);
-            if (forceMerge)
+            if (IsNeedMerge(parentMesh.Name, fileName))
             {
-                parentMesh.MergeChildBrick(accInvertNext, accInvertByMatrix, parentColor, trMatrix, subBrickMesh);
+                parentMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
             }
             else
             {
                 subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
-                parentMesh.AddChildBrick(subBrickMesh.Id);
+                parentMesh.AddChildBrick(subBrickMesh);
             }
         }
 
@@ -458,17 +374,16 @@ public class LdFileParser
 
     public bool Start(out BrickMesh brickMesh, string modelName,
         Dictionary<string, Queue<string>> pCache, Dictionary<string, FileLines> fCache,
-        Matrix4x4 trMatrix, bool usePartsAsset)
+        bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
         pathCache = pCache;
         fileCache = fCache;
-        brickCache.Clear();
 
         brickMesh = null;
 
         StopWatch stopWatch = new StopWatch("Parsing Model");
-        bool ret = TryParseModel(ref brickMesh, modelName, trMatrix);
+        bool ret = TryParseModel(ref brickMesh, modelName, Matrix4x4.identity);
         stopWatch.EndTick();
 
         return ret;
