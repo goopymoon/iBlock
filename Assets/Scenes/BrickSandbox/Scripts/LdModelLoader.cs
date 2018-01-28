@@ -23,6 +23,8 @@ public class LdModelLoader : MonoBehaviour
     private HashSet<string> subFileNames;
     private bool usePartAsset = false;
 
+    static System.Diagnostics.Stopwatch stopWatch;
+
     private string GetBaseImportPath()
     {
         return Path.Combine(Application.streamingAssetsPath, LdConstant.LD_PARTS_PATH);
@@ -30,7 +32,7 @@ public class LdModelLoader : MonoBehaviour
 
     public IEnumerator LoadPartsListFile()
     {
-        StopWatch stopWatch = new StopWatch("LoadPartsListFile");
+        stopWatch.Start();
 
         var filePath = Path.Combine(GetBaseImportPath(), LdConstant.PARTS_LIST_FNAME);
 
@@ -51,7 +53,8 @@ public class LdModelLoader : MonoBehaviour
 
         Debug.Log(string.Format("Parts list cache is ready.", filePath));
 
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("LoadPartsListFile: " + stopWatch.ElapsedMilliseconds + " ms");
     }
 
     private void LoadPartsPathFile()
@@ -188,8 +191,6 @@ public class LdModelLoader : MonoBehaviour
 
     public IEnumerator LoadMPDFile(string fileName)
     {
-        StopWatch stopWatch = new StopWatch();
-
         mainModelName = string.Empty;
 
         string ext = Path.GetExtension(fileName);
@@ -206,11 +207,12 @@ public class LdModelLoader : MonoBehaviour
         if (!afileLoader.GetSplitLines(out readText))
             yield break;
 
-        stopWatch.StartTick("Load ldr files");
+        stopWatch.Start();
 		mainModelName = LoadLDRFiles(readText);
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("Load ldr files: " + stopWatch.ElapsedMilliseconds + " ms");
 
-        stopWatch.StartTick("Load sub files");
+        stopWatch.Start();
         int cc = 0;
         if (mainModelName.Length > 0)
         {
@@ -234,8 +236,8 @@ public class LdModelLoader : MonoBehaviour
 
             Debug.Log(string.Format("Loading finished: {0} file caches", fileCache.Count.ToString()));
         }
-        Debug.Log(string.Format("subfile loop cnt {0}", cc));
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log(string.Format("Load subfile: loop cnt {0}, {1} msec", cc, stopWatch.ElapsedMilliseconds));
     }
 
     public IEnumerator Load(string fileName, bool usePreparedPartAsset)
@@ -268,5 +270,7 @@ public class LdModelLoader : MonoBehaviour
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
         ldFileParser = new LdFileParser();
         model = null;
+
+        stopWatch = new System.Diagnostics.Stopwatch();
     }
 }

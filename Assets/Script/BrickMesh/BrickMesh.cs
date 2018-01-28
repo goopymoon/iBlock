@@ -4,7 +4,6 @@ using System.Collections.Generic;
 
 using System;
 
-[Serializable]
 public class BrickMesh
 {
     public bool IsPartAsset { get; set; }

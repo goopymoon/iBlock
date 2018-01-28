@@ -14,6 +14,8 @@ public class BrickGenerator : MonoBehaviour
 
     private GameObject modelObj;
 
+    static System.Diagnostics.Stopwatch stopWatch;
+
     private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent,
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
@@ -108,9 +110,10 @@ public class BrickGenerator : MonoBehaviour
 
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
-        StopWatch stopWatch = new StopWatch("Create Mesh");
+        stopWatch.Start();
         yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("CreateMesh: " + stopWatch.ElapsedMilliseconds + " ms");
 
         if (modelObj)
         {
@@ -125,6 +128,8 @@ public class BrickGenerator : MonoBehaviour
     {
         BrickMaterial.Instance.Initialize();
         BrickMeshManager.Instance.Initialize();
+
+        stopWatch = new System.Diagnostics.Stopwatch();
     }
 
     // Use this for initialization

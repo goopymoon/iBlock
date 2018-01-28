@@ -6,27 +6,8 @@ public class StudObjManager : MonoBehaviour {
 
     public GameObject brickPrefab;
 
+    public static StudObjManager Instance;
     public Dictionary<string, Queue<GameObject>> idlePool;
-
-    private static StudObjManager _instance;
-    public static StudObjManager Instance
-    {
-        get
-        {
-            if (_instance == null)
-            {
-                _instance = GameObject.FindObjectOfType(typeof(StudObjManager)) as StudObjManager;
-                if (_instance == null)
-                {
-                    GameObject container = new GameObject();
-                    container.name = "StudObjManager";
-                    _instance = container.AddComponent(typeof(StudObjManager)) as StudObjManager;
-                }
-            }
-
-            return _instance;
-        }
-    }
 
     public void CreateStudMesh(StudInfo studInfo, Transform parent,
     short parentBrickColor = LdConstant.LD_COLOR_MAIN, bool invertNext = false)
@@ -83,6 +64,7 @@ public class StudObjManager : MonoBehaviour {
 
     public void Awake()
     {
+        Instance = this;
         idlePool = new Dictionary<string, Queue<GameObject>>();
     }
 }

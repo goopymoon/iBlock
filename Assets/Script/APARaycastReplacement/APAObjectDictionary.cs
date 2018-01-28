@@ -28,7 +28,7 @@ public class APAObjectDictionary : MonoBehaviour
     public static APAObjectDictionary singleton;
 
     private APAOctree octree;
-    private int octreeDepth = 3;
+    private int octreeDepth = 7;
 
     void Awake()
     {

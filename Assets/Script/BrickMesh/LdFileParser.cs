@@ -42,6 +42,8 @@ public class LdFileParser
     private Dictionary<string, Queue<string>> pathCache;
     private Dictionary<string, FileLines> fileCache;
 
+    static System.Diagnostics.Stopwatch stopWatch;
+
     public LdFileParser()
     {
     }
@@ -438,9 +440,11 @@ public class LdFileParser
             return false;
         }
 
-        StopWatch stopWatch = new StopWatch("Parsing Model");
+        stopWatch = new System.Diagnostics.Stopwatch();
+        stopWatch.Start();
         bool ret = TryParseModel(ref brickMesh, modelName, Matrix4x4.identity);
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("Parsing Model: " + stopWatch.ElapsedMilliseconds + " ms");
 
         return ret;
     }
