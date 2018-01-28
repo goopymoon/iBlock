@@ -8,17 +8,16 @@ using System;
 public class BrickMesh
 {
     public bool IsPartAsset { get; set; }
-
     public string Name { get; set; }
     public bool BfcEnabled { get; set; }
     public bool InvertNext { get; set; }
     public short BrickColor { get; private set; }
     public Matrix4x4 LocalTr { get; private set; }
     public List<BrickMesh> Children { get; set; }
+    public BrickMeshInfo meshInfo { get; private set; }
+    public List<StudInfo> studInfos { get; private set; }
 
-    private BrickMeshInfo meshInfo { get; set; }
-
-    private BrickMesh(string meshName)
+    public BrickMesh(string meshName)
     {
         Name = meshName;
         BfcEnabled = false;
@@ -26,6 +25,7 @@ public class BrickMesh
         BrickColor = LdConstant.LD_COLOR_MAIN;
         LocalTr = Matrix4x4.identity;
         meshInfo = BrickMeshManager.Instance.GetBrickMeshInfo(meshName);
+        studInfos = null;
         IsPartAsset = false;
 
         Children = new List<BrickMesh>();
@@ -40,6 +40,11 @@ public class BrickMesh
         LocalTr = rhs.LocalTr;
         meshInfo = rhs.meshInfo;
         IsPartAsset = false;
+
+        if (rhs.studInfos != null)
+        {
+            studInfos = new List<StudInfo>(rhs.studInfos);
+        }
 
         Children = new List<BrickMesh>();
         foreach (BrickMesh entry in rhs.Children)
@@ -111,9 +116,13 @@ public class BrickMesh
         return (meshInfo != null ? (meshInfo.Vertices.Count > 0) : false);
     }
 
-    public void AddStudInfo(Matrix4x4 trMatrix, short colorIndex, bool inverted)
+    public void AddStudInfo(string name, Matrix4x4 trMatrix, bool inverted, short colorIndex, StudInfo.eStudType studType)
     {
-        meshInfo.studInfos.Add(new StudInfo(trMatrix, colorIndex, inverted));
+        if (studInfos == null)
+        {
+            studInfos = new List<StudInfo>();
+        }
+        studInfos.Add(new StudInfo(name, trMatrix, inverted, colorIndex, studType));
     }
 
     public bool AddChildBrick(BrickMesh child)
@@ -128,29 +137,59 @@ public class BrickMesh
         return true;
     }
 
-    public void SetProperties(bool invert, short color, Matrix4x4 trMatrix)
+    public void SetProperties(Matrix4x4 trMatrix, bool invert, short color)
     {
+        LocalTr = trMatrix;
         InvertNext = invert;
         BrickColor = color;
-        LocalTr = trMatrix;
     }
 
-    public void MergeChildBrick(bool inverted, short color, Matrix4x4 trMatrix, BrickMesh child)
+
+    public void MergeChildStudInfos(BrickMesh child)
     {
+        if (studInfos == null)
+        {
+            studInfos = new List<StudInfo>();
+        }
+
+        foreach (var entry in child.studInfos)
+        {
+            bool inverted = InvertNext ^ entry.Inverted;
+            short colorIndex = LdConstant.GetEffectiveColorIndex(entry.ColorIndex, BrickColor);
+            Matrix4x4 tr = LocalTr * entry.Tr;
+
+            studInfos.Add(new StudInfo(entry.Name, tr, inverted, colorIndex, entry.studType));
+        }
+
+        child.studInfos.Clear();
+    }
+
+    public void MergeChildBrick(BrickMesh child)
+    {
+        if (child.studInfos != null)
+        {
+            MergeChildStudInfos(child);
+        }
+
         if (meshInfo != null && child.meshInfo != null)
         {
             if (child.meshInfo.Vertices.Count != 0 || child.Children.Count != 0)
             {
-                meshInfo.MergeChildBrick(inverted, color, trMatrix, child.meshInfo);
+                meshInfo.MergeChildBrick(child.InvertNext, child.BrickColor, child.LocalTr, child.meshInfo);
             }
         }
 
         BrickMeshManager.Instance.RemoveBrickMesh(child);
     }
 
+    public static void GetMatrixComponents(Matrix4x4 tr, out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
+    {
+        MatrixUtil.DecomposeMatrix(tr, out localPosition, out localRotation, out localScale);
+    }
+
     public void GetMatrixComponents(out Vector3 localPosition, out Quaternion localRotation, out Vector3 localScale)
     {
-        MatrixUtil.DecomposeMatrix(LocalTr, out localPosition, out localRotation, out localScale);
+        GetMatrixComponents(LocalTr, out localPosition, out localRotation, out localScale);
     }
 
     public void Optimize(float angle = BrickMeshOptimizer.SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE)
@@ -233,7 +272,7 @@ public class BrickMesh
         return isModified;
     }
 
-    public void GetRenderMeshInfo(short parentBrickColor, bool invert,
+    public void GetRenderMeshInfo(bool invert, short parentBrickColor, 
     out Vector3[] vts, out Color32[] colors, out int[] opaqueTris, out int[] transparentTris)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(BrickColor, parentBrickColor);
@@ -252,7 +291,7 @@ public class BrickMesh
         }
     }
 
-    public void GetRenderMeshReconstructInfo(short parentBrickColor, bool invert, Mesh mesh,
+    public void GetRenderMeshReconstructInfo(bool invert, short parentBrickColor, Mesh mesh,
         out Color32[] colors, out int[] tris, out BrickMaterial.MatType matType, out bool isColorModified, out bool isMeshModified, out bool isMatModified)
     {
         short effectiveParentColor = LdConstant.GetEffectiveColorIndex(BrickColor, parentBrickColor);

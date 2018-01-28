@@ -216,6 +216,11 @@ public class LdModelLoader : MonoBehaviour
         {
             subFileNames = new HashSet<string> { mainModelName };
 
+            foreach(var entry in BrickMeshManager.Instance.studPool)
+            {
+                subFileNames.Add(entry.Key);
+            }
+
             while (subFileNames.Count > 0)
             {
                 cc++;
@@ -250,7 +255,7 @@ public class LdModelLoader : MonoBehaviour
             yield break;
         }
 
-        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, usePartAsset))
+        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, usePartAsset, false))
             yield break;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));

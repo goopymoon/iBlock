@@ -75,13 +75,13 @@ public class Brick : MonoBehaviour
         return (deltaPos.magnitude < MatchThreshold);
     }
 
-    private void TransformModel(BrickMesh brickMesh)
+    private void TransformModel(Matrix4x4 tr)
     {
         Vector3 localPosition;
         Quaternion localRotation;
         Vector3 localScale;
 
-        brickMesh.GetMatrixComponents(out localPosition, out localRotation, out localScale);
+        BrickMesh.GetMatrixComponents(tr, out localPosition, out localRotation, out localScale);
 
         transform.localPosition = localPosition;
         transform.localRotation = localRotation;
@@ -109,9 +109,9 @@ public class Brick : MonoBehaviour
         boxCollider.isTrigger = true;
     }
 
-    public bool ReconstructMesh(GameObject go, BrickMesh brickMesh, short parentBrickColor, bool invertNext)
+    public bool ReconstructMesh(GameObject go, BrickMesh brickMesh, bool invertNext, short parentBrickColor)
     {
-        TransformModel(brickMesh);
+        TransformModel(brickMesh.LocalTr);
 
         Mesh mesh = go.GetComponent<MeshFilter>().mesh;
         int matIndexOffset = brickMesh.BfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
@@ -124,7 +124,7 @@ public class Brick : MonoBehaviour
         bool isMatModified;
         BrickMaterial.MatType matType;
 
-        brickMesh.GetRenderMeshReconstructInfo(parentBrickColor, invertNext, mesh, 
+        brickMesh.GetRenderMeshReconstructInfo(invertNext, parentBrickColor, mesh, 
             out colors, out tris, out matType, out isColorModified, out isMeshModified, out isMatModified);
 
         // assign the array of colors to the Mesh.
@@ -148,9 +148,9 @@ public class Brick : MonoBehaviour
         return true;
     }
 
-    public bool CreateMesh(BrickMesh brickMesh, short parentBrickColor, bool invertNext)
+    public bool CreateMesh(BrickMesh brickMesh, bool invertNext, short parentBrickColor)
     {
-        TransformModel(brickMesh);
+        TransformModel(brickMesh.LocalTr);
 
         if (!brickMesh.HasVertices())
             return false;
@@ -162,7 +162,66 @@ public class Brick : MonoBehaviour
         Mesh mesh = new Mesh();
         int matIndexOffset = brickMesh.BfcEnabled ? 0 : (int)BrickMaterial.MatType.DS_OFFSET;
 
-        brickMesh.GetRenderMeshInfo(parentBrickColor, invertNext, out vts, out colors, out opaqueTris, out transparentTris);
+        brickMesh.GetRenderMeshInfo(invertNext, parentBrickColor, out vts, out colors, out opaqueTris, out transparentTris);
+
+        mesh.vertices = vts;
+        mesh.colors32 = colors;
+
+        if (opaqueTris.Length > 0 && transparentTris.Length == 0)
+        {
+            mesh.SetTriangles(opaqueTris, 0);
+
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 1);
+        }
+        else if (opaqueTris.Length == 0 && transparentTris.Length > 0)
+        {
+            mesh.SetTriangles(transparentTris, 0);
+
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Transparent, matIndexOffset, 1);
+        }
+        else if (opaqueTris.Length > 0 && transparentTris.Length > 0)
+        {
+            mesh.subMeshCount = 2;
+            mesh.SetTriangles(opaqueTris, 0);
+            mesh.SetTriangles(transparentTris, 1);
+
+            originalMat = new BrickMaterialInfo(BrickMaterial.MatType.Opaque, matIndexOffset, 2);
+        }
+        else
+        {
+            return false;
+        }
+
+        ChangeMaterial(originalMat);
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        GetComponent<MeshFilter>().mesh = mesh;
+        GetComponent<MeshFilter>().sharedMesh = mesh;
+
+        AddBoxCollider();
+
+        return true;
+    }
+
+    public bool CreateStudMesh(ref StudInfo studInfo, Transform parent, short parentBrickColor, bool invertNext)
+    {
+        TransformModel(studInfo.Tr);
+
+        Vector3[] vts;
+        Color32[] colors;
+        int[] opaqueTris;
+        int[] transparentTris;
+        Mesh mesh = new Mesh();
+        int matIndexOffset = 0;
+
+        BrickMesh brickMesh = BrickMeshManager.Instance.GetBrickMesh(studInfo.Name);
+        if (brickMesh == null)
+        {
+            return false;
+        }
+        brickMesh.GetRenderMeshInfo(invertNext, parentBrickColor, out vts, out colors, out opaqueTris, out transparentTris);
 
         mesh.vertices = vts;
         mesh.colors32 = colors;

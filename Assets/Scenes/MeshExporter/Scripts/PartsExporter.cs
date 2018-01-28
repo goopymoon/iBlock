@@ -163,7 +163,7 @@ public class PartsExporter : MonoBehaviour {
  
         go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(transform);
-        if (!go.GetComponent<Brick>().CreateMesh(brickMesh, LdConstant.LD_COLOR_MAIN, false))
+        if (!go.GetComponent<Brick>().CreateMesh(brickMesh, false, LdConstant.LD_COLOR_MAIN))
         {
             Debug.Log(string.Format("Cannot create mesh: {0}", fname));
         }

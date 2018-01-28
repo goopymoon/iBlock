@@ -14,7 +14,7 @@ public class BrickGenerator : MonoBehaviour
 
     private GameObject modelObj;
 
-    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent, 
+    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent,
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
         if (brickMesh == null)
@@ -34,12 +34,12 @@ public class BrickGenerator : MonoBehaviour
             }
 
             go = (GameObject)Instantiate(partObj);
-            isMeshExist = go.GetComponent<Brick>().ReconstructMesh(go, brickMesh, parentBrickColor, invertNext);
+            isMeshExist = go.GetComponent<Brick>().ReconstructMesh(go, brickMesh, invertNext, parentBrickColor);
         }
         else
         {
             go = (GameObject)Instantiate(brickPrefab);
-            isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext);
+            isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, invertNext, parentBrickColor);
         }
 
         if (modelObj == null)
@@ -53,10 +53,19 @@ public class BrickGenerator : MonoBehaviour
             GetComponent<BrickController>().Register(go);
         }
 
+        bool accInvert = invertNext ^ brickMesh.InvertNext;
+        short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
+
+        if (brickMesh.studInfos != null)
+        {
+            foreach (StudInfo entry in brickMesh.studInfos)
+            {
+                StudObjManager.Instance.CreateStudMesh(entry, go.transform, accuColor, accInvert);
+            }
+        }
+
         for (int i = 0; i < brickMesh.Children.Count; ++i)
         {
-            bool accInvert = invertNext ^ brickMesh.InvertNext;
-            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
             yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, accInvert, accuColor));
         }
     }

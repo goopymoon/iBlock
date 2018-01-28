@@ -6,11 +6,10 @@ using UnityEngine;
 
 public class BrickMeshInfo
 {
-    public string Name { get; set; }
+    public string Name { get; private set; }
     public List<Vector3> Vertices { get; set; }
     public List<short> ColorIndices { get; set; }
-    public List<int> Triangles { get; set; }
-    public List<StudInfo> studInfos;
+    public List<int> Triangles { get; private set; }
 
     public BrickMeshInfo(string meshName)
     {
@@ -18,7 +17,6 @@ public class BrickMeshInfo
         ColorIndices = new List<short>();
         Vertices = new List<Vector3>();
         Triangles = new List<int>();
-        studInfos = new List<StudInfo>();
     }
 
     public void PushTriangle(short vtColorIndex, ref Vector3 v1, ref Vector3 v2, ref Vector3 v3, bool renderWinding)

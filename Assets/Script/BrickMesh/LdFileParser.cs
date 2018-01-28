@@ -293,7 +293,7 @@ public class LdFileParser
         return true;
     }
 
-    private bool IsNeedMerge(string parentName, string fileName)
+    private bool IsMergeNeeded(string parentName, string fileName)
     {
         string ext = Path.GetExtension(fileName).ToLower();
         if (ext != ".dat")
@@ -316,21 +316,41 @@ public class LdFileParser
         return false;
     }
 
+    private bool IsStudSkippingNeeded(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
+        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
+    {
+        string modelName = Path.GetFileName(fileName).ToLower();
+
+        StudInfo.eStudType studType;
+        if (BrickMeshManager.Instance.TryGetStudType(modelName, out studType))
+        {
+            parentMesh.AddStudInfo(modelName, trMatrix, accInvertNext, parentColor, studType);
+            return true;
+        }
+
+        return false;
+    }
+
     private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
         short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
-        string cacheFileName = fileName.Replace(@"\", @"/").ToLower();
-        BrickMesh subBrickMesh = null;    
+        if (IsStudSkippingNeeded(ref parentMesh, fileName, trMatrix, parentColor, accInvertNext))
+        {
+            return true;
+        }
 
-        BrickMesh.Create(cacheFileName, out subBrickMesh);
+        string canonicalName = fileName.Replace(@"\", @"/").ToLower();
+
+        BrickMesh subBrickMesh = null;    
+        BrickMesh.Create(canonicalName, out subBrickMesh);
         if (!subBrickMesh.IsRegisteredMeshInfo())
         {
             FileLines val;
-            if (!fileCache.TryGetValue(cacheFileName, out val))
+            if (!fileCache.TryGetValue(canonicalName, out val))
             {
                 if (!isUsingPartsAsset)
                 {
-                    Debug.Log(string.Format("Cannot find file cache for {0}", cacheFileName));
+                    Debug.Log(string.Format("Cannot find file cache for {0}", canonicalName));
                     return false;
                 }
 
@@ -340,7 +360,7 @@ public class LdFileParser
                 }
                 else
                 {
-                    subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
+                    subBrickMesh.SetProperties(trMatrix, accInvertNext, parentColor);
                     parentMesh.AddChildBrick(subBrickMesh);
                 }
 
@@ -358,13 +378,14 @@ public class LdFileParser
         }
         else
         {
-            if (IsNeedMerge(parentMesh.Name, fileName))
+            subBrickMesh.SetProperties(trMatrix, accInvertNext, parentColor);
+
+            if (IsMergeNeeded(parentMesh.Name, canonicalName))
             {
-                parentMesh.MergeChildBrick(accInvertNext, parentColor, trMatrix, subBrickMesh);
+                parentMesh.MergeChildBrick(subBrickMesh);
             }
             else
             {
-                subBrickMesh.SetProperties(accInvertNext, parentColor, trMatrix);
                 parentMesh.AddChildBrick(subBrickMesh);
             }
         }
@@ -372,15 +393,50 @@ public class LdFileParser
         return true;
     }
 
+    public bool PrepareStuds()
+    {
+        foreach(var entry in BrickMeshManager.Instance.studPool)
+        {
+            string canonicalName = entry.Key;
+
+            BrickMesh studBrickMesh = new BrickMesh(canonicalName);
+            if (!BrickMeshManager.Instance.RegisterBrickMesh(canonicalName, studBrickMesh))
+            {
+                Debug.Log(string.Format("Stud already exist: {0}", canonicalName));
+                return false;
+            }
+
+            FileLines val;
+            if (!fileCache.TryGetValue(canonicalName, out val))
+            {
+                Debug.Log(string.Format("Cannot find file cache for {0}", canonicalName));
+                return false;
+            }
+
+            if (!ParseModel(ref studBrickMesh, val.cache.ToArray()))
+                return false;
+
+            studBrickMesh.SetProperties(Matrix4x4.identity, false, LdConstant.LD_COLOR_MAIN);
+        }
+
+        return true;
+    }
+
     public bool Start(out BrickMesh brickMesh, string modelName,
         Dictionary<string, Queue<string>> pCache, Dictionary<string, FileLines> fCache,
-        bool usePartsAsset)
+        bool usePartsAsset, bool skipStud)
     {
         isUsingPartsAsset = usePartsAsset;
         pathCache = pCache;
         fileCache = fCache;
 
         brickMesh = null;
+
+        if (!PrepareStuds())
+        {
+            Debug.Log("Preparing sutds failed.");
+            return false;
+        }
 
         StopWatch stopWatch = new StopWatch("Parsing Model");
         bool ret = TryParseModel(ref brickMesh, modelName, Matrix4x4.identity);

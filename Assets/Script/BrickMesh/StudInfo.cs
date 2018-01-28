@@ -4,14 +4,27 @@ using UnityEngine;
 
 public struct StudInfo
 {
-    public Matrix4x4 Tr { get; private set; }
-    public short ColorIndex { get; private set; }
-    public bool Inverted { get; private set; }
-
-    public StudInfo(Matrix4x4 tr, short colorIndex, bool inverted)
+    public enum eStudType
     {
+        ST_NA,
+        ST_CONVEX,
+        ST_CONCAVE,
+    };
+
+    public string Name { get; private set; }
+    public Matrix4x4 Tr { get; private set; }
+    public bool Inverted { get; private set; }
+    public short ColorIndex { get; private set; }
+    public StudInfo.eStudType studType { get; private set; }
+    public bool IsVisible { get; set; }
+
+    public StudInfo(string name, Matrix4x4 tr, bool inverted, short colorIndex, eStudType sType)
+    {
+        Name = name;
         Tr = tr;
-        ColorIndex = colorIndex;
         Inverted = inverted;
+        ColorIndex = colorIndex;
+        studType = sType;
+        IsVisible = true;
     }
 }
