@@ -16,7 +16,6 @@ public struct StudInfo
     public bool Inverted { get; private set; }
     public short ColorIndex { get; private set; }
     public StudInfo.eStudType studType { get; private set; }
-    public bool IsVisible { get; set; }
 
     public StudInfo(string name, Matrix4x4 tr, bool inverted, short colorIndex, eStudType sType)
     {
@@ -25,6 +24,5 @@ public struct StudInfo
         Inverted = inverted;
         ColorIndex = colorIndex;
         studType = sType;
-        IsVisible = true;
     }
 }

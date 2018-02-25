@@ -75,7 +75,7 @@ public class Brick : MonoBehaviour
         return (deltaPos.magnitude < MatchThreshold);
     }
 
-    private void TransformModel(Matrix4x4 tr)
+    public void TransformModel(Matrix4x4 tr)
     {
         Vector3 localPosition;
         Quaternion localRotation;
@@ -205,7 +205,7 @@ public class Brick : MonoBehaviour
         return true;
     }
 
-    public bool CreateStudMesh(ref StudInfo studInfo, Transform parent, short parentBrickColor, bool invertNext)
+    public bool CreateStudMesh(ref StudInfo studInfo, short parentBrickColor, bool invertNext)
     {
         TransformModel(studInfo.Tr);
 

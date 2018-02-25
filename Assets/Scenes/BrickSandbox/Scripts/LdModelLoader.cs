@@ -268,7 +268,9 @@ public class LdModelLoader : MonoBehaviour
         partsListCache = new Dictionary<string, string>();
         partsPathCache = new Dictionary<string, Queue<string>>();
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
-        ldFileParser = new LdFileParser();
+
+        bool reduceStud = Camera.main.GetComponent<BrickObjectDictionary>().reduceStud;
+        ldFileParser = new LdFileParser(reduceStud);
         model = null;
 
         stopWatch = new System.Diagnostics.Stopwatch();

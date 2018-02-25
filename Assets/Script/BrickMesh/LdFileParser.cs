@@ -38,14 +38,16 @@ public class LdFileParser
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding { CCW = 0, CW };
 
+    private bool reduceStud;
     private bool isUsingPartsAsset;
     private Dictionary<string, Queue<string>> pathCache;
     private Dictionary<string, FileLines> fileCache;
 
     static System.Diagnostics.Stopwatch stopWatch;
 
-    public LdFileParser()
+    public LdFileParser(bool optimizeStud = false)
     {
+        reduceStud = optimizeStud;
     }
 
     private Vector3 ParseVector(string[] words, ref int offset)
@@ -336,9 +338,12 @@ public class LdFileParser
     private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
         short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
-        if (IsStudSkippingNeeded(ref parentMesh, fileName, trMatrix, parentColor, accInvertNext))
+        if (reduceStud)
         {
-            return true;
+            if (IsStudSkippingNeeded(ref parentMesh, fileName, trMatrix, parentColor, accInvertNext))
+            {
+                return true;
+            }
         }
 
         string canonicalName = fileName.Replace(@"\", @"/").ToLower();
@@ -434,10 +439,13 @@ public class LdFileParser
 
         brickMesh = null;
 
-        if (!PrepareStuds())
+        if (reduceStud)
         {
-            Debug.Log("Preparing sutds failed.");
-            return false;
+            if (!PrepareStuds())
+            {
+                Debug.Log("Preparing sutds failed.");
+                return false;
+            }
         }
 
         stopWatch = new System.Diagnostics.Stopwatch();

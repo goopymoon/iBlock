@@ -50,6 +50,8 @@ public class BrickGenerator : MonoBehaviour
         go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(parent);
 
+        BrickObjectDictionary.singleton.AddBrick2Octree(go.GetComponent<Brick>());
+
         if (isMeshExist)
         {
             GetComponent<BrickController>().Register(go);
@@ -62,7 +64,8 @@ public class BrickGenerator : MonoBehaviour
         {
             foreach (StudInfo entry in brickMesh.studInfos)
             {
-                StudObjManager.Instance.CreateStudMesh(entry, go.transform, accuColor, accInvert);
+                GameObject studgo = StudObjManager.Instance.CreateStudMesh(entry, go.transform, accuColor, accInvert);
+                BrickObjectDictionary.singleton.AddStud2Octree(entry, studgo.GetComponent<Brick>());
             }
         }
 
@@ -122,6 +125,8 @@ public class BrickGenerator : MonoBehaviour
 
             BrickMeshManager.Instance.DumpBrickMesh();
         }
+
+        StudObjManager.Instance.ClearPool();
     }
 
     private void Awake()
@@ -135,6 +140,10 @@ public class BrickGenerator : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
+        Bounds tBounds = terrainMesh.GetComponent<Renderer>().bounds;
+        int worldSize = (int)Math.Max(Math.Max(tBounds.size.x, tBounds.size.y), tBounds.size.z);
+        BrickObjectDictionary.singleton.Init(worldSize, tBounds.center);
+
         StartCoroutine(LoadModel());
     }
 
