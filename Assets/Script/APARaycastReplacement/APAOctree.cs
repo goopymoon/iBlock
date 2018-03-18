@@ -20,7 +20,6 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-[System.Serializable]
 public class APAOctree
 {
     public APAOctree parent;
@@ -153,7 +152,7 @@ public class APAOctree
 	public void Clear()
     {
 		int total = ClearOctree(this);
-		Debug.Log("Total Nodes Cleared: " + total);
+		Debug.Log("Total APAOctree Nodes Cleared: " + total);
 	}
 	
 	protected int ClearOctree(APAOctree o)

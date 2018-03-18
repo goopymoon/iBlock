@@ -14,13 +14,11 @@ public class BrickGenerator : MonoBehaviour
 
     private GameObject modelObj;
 
-    private IEnumerator CreateMesh(GameObjId brickMeshId, Transform parent, 
+    static System.Diagnostics.Stopwatch stopWatch;
+
+    private IEnumerator CreateMesh(BrickMesh brickMesh, Transform parent,
         bool invertNext = false, short parentBrickColor = LdConstant.LD_COLOR_MAIN)
     {
-        if (!brickMeshId.IsValid())
-            yield break;
-
-        BrickMesh brickMesh = BrickMeshManager.Instance.Get(brickMeshId);
         if (brickMesh == null)
             yield break;
 
@@ -38,12 +36,12 @@ public class BrickGenerator : MonoBehaviour
             }
 
             go = (GameObject)Instantiate(partObj);
-            isMeshExist = go.GetComponent<Brick>().ReconstructMesh(go, brickMesh, parentBrickColor, invertNext);
+            isMeshExist = go.GetComponent<Brick>().ReconstructMesh(go, brickMesh, invertNext, parentBrickColor);
         }
         else
         {
             go = (GameObject)Instantiate(brickPrefab);
-            isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, parentBrickColor, invertNext);
+            isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, invertNext, parentBrickColor);
         }
 
         if (modelObj == null)
@@ -52,16 +50,28 @@ public class BrickGenerator : MonoBehaviour
         go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(parent);
 
+        BrickObjectDictionary.singleton.AddBrick2Octree(go.GetComponent<Brick>());
+
         if (isMeshExist)
         {
             GetComponent<BrickController>().Register(go);
         }
 
+        bool accInvert = invertNext ^ brickMesh.InvertNext;
+        short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
+
+        if (brickMesh.studInfos != null)
+        {
+            foreach (StudInfo entry in brickMesh.studInfos)
+            {
+                GameObject studgo = StudObjManager.Instance.CreateStudMesh(entry, go.transform, accuColor, accInvert);
+                BrickObjectDictionary.singleton.AddStud2Octree(entry, studgo.GetComponent<Brick>());
+            }
+        }
+
         for (int i = 0; i < brickMesh.Children.Count; ++i)
         {
-            bool invertFlag = invertNext ^ brickMesh.InvertNext;
-            short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
-            yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, invertFlag, accuColor));
+            yield return StartCoroutine(CreateMesh(brickMesh.Children[i], go.transform, accInvert, accuColor));
         }
     }
 
@@ -103,28 +113,37 @@ public class BrickGenerator : MonoBehaviour
 
         yield return StartCoroutine(GetComponent<LdModelLoader>().Load(modelFileName, usePartAsset));
 
-        StopWatch stopWatch = new StopWatch("Create Mesh");
-        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model.Id, transform));
-        stopWatch.EndTick();
+        stopWatch.Start();
+        yield return StartCoroutine(CreateMesh(GetComponent<LdModelLoader>().model, transform));
+        stopWatch.Stop();
+        Debug.Log("CreateMesh: " + stopWatch.ElapsedMilliseconds + " ms");
 
         if (modelObj)
         {
             InitCameraZoomRange(modelObj);
             SnapToTerrain(modelObj);
 
-            BrickMeshManager.Instance.Dump();
+            BrickMeshManager.Instance.DumpBrickMesh();
         }
+
+        StudObjManager.Instance.ClearPool();
     }
 
     private void Awake()
     {
         BrickMaterial.Instance.Initialize();
         BrickMeshManager.Instance.Initialize();
+
+        stopWatch = new System.Diagnostics.Stopwatch();
     }
 
     // Use this for initialization
     void Start ()
     {
+        Bounds tBounds = terrainMesh.GetComponent<Renderer>().bounds;
+        int worldSize = (int)Math.Max(Math.Max(tBounds.size.x, tBounds.size.y), tBounds.size.z);
+        BrickObjectDictionary.singleton.Init(worldSize, tBounds.center);
+
         StartCoroutine(LoadModel());
     }
 

@@ -9,9 +9,9 @@ public static class BrickMeshOptimizer
 {
     public const int SMOOTH_ANGLE_THRESHOLD_FOR_OPTIMIZE = 60;
 
-    public static void Optimize(this BrickMesh mesh, float angle)
+    public static void Optimize(this BrickMeshInfo mesh, float angle)
     {
-        if (mesh.Vertices.Count == 0)
+        if (mesh == null ||  mesh.Vertices.Count == 0)
             return;
 
         var triangles = mesh.Triangles;

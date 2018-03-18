@@ -47,9 +47,4 @@ public class Triangle : UnityEngine.Object
 		pt1 = trans.TransformPoint(pt1);
 		pt2 = trans.TransformPoint(pt2);
 	}
-	
-
-	
-	
-
 }

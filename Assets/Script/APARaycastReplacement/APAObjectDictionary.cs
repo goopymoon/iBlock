@@ -28,7 +28,7 @@ public class APAObjectDictionary : MonoBehaviour
     public static APAObjectDictionary singleton;
 
     private APAOctree octree;
-    private int octreeDepth = 3;
+    private int octreeDepth = 7;
 
     void Awake()
     {
@@ -37,11 +37,11 @@ public class APAObjectDictionary : MonoBehaviour
 
     void OnDestroy()
     {
-		Debug.Log("Mem Before Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
+		Debug.Log("Mem Before APAOctree Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
         if (octree != null)
 		    octree.Clear();
 		octree = null;
-		Debug.Log("Mem After Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
+		Debug.Log("Mem After APAOctree Clear: " + System.GC.GetTotalMemory(true) / 1024f / 1024f);
 	}
 		
 	public void Init (Bounds bounds, List<GameObject> gameObjects)
@@ -75,7 +75,7 @@ public class APAObjectDictionary : MonoBehaviour
             }
         }
 
-        Debug.Log("Created Database");
+        Debug.Log("Created APAOctree Database");
         Debug.Log("Total Indexed Triangles: " + GetTriangleCount(octree));
     }
 

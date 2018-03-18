@@ -23,6 +23,8 @@ public class LdModelLoader : MonoBehaviour
     private HashSet<string> subFileNames;
     private bool usePartAsset = false;
 
+    static System.Diagnostics.Stopwatch stopWatch;
+
     private string GetBaseImportPath()
     {
         return Path.Combine(Application.streamingAssetsPath, LdConstant.LD_PARTS_PATH);
@@ -30,7 +32,7 @@ public class LdModelLoader : MonoBehaviour
 
     public IEnumerator LoadPartsListFile()
     {
-        StopWatch stopWatch = new StopWatch("LoadPartsListFile");
+        stopWatch.Start();
 
         var filePath = Path.Combine(GetBaseImportPath(), LdConstant.PARTS_LIST_FNAME);
 
@@ -51,7 +53,8 @@ public class LdModelLoader : MonoBehaviour
 
         Debug.Log(string.Format("Parts list cache is ready.", filePath));
 
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("LoadPartsListFile: " + stopWatch.ElapsedMilliseconds + " ms");
     }
 
     private void LoadPartsPathFile()
@@ -188,8 +191,6 @@ public class LdModelLoader : MonoBehaviour
 
     public IEnumerator LoadMPDFile(string fileName)
     {
-        StopWatch stopWatch = new StopWatch();
-
         mainModelName = string.Empty;
 
         string ext = Path.GetExtension(fileName);
@@ -206,15 +207,21 @@ public class LdModelLoader : MonoBehaviour
         if (!afileLoader.GetSplitLines(out readText))
             yield break;
 
-        stopWatch.StartTick("Load ldr files");
+        stopWatch.Start();
 		mainModelName = LoadLDRFiles(readText);
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log("Load ldr files: " + stopWatch.ElapsedMilliseconds + " ms");
 
-        stopWatch.StartTick("Load sub files");
+        stopWatch.Start();
         int cc = 0;
         if (mainModelName.Length > 0)
         {
             subFileNames = new HashSet<string> { mainModelName };
+
+            foreach(var entry in BrickMeshManager.Instance.studPool)
+            {
+                subFileNames.Add(entry.Key);
+            }
 
             while (subFileNames.Count > 0)
             {
@@ -229,8 +236,8 @@ public class LdModelLoader : MonoBehaviour
 
             Debug.Log(string.Format("Loading finished: {0} file caches", fileCache.Count.ToString()));
         }
-        Debug.Log(string.Format("subfile loop cnt {0}", cc));
-        stopWatch.EndTick();
+        stopWatch.Stop();
+        Debug.Log(string.Format("Load subfile: loop cnt {0}, {1} msec", cc, stopWatch.ElapsedMilliseconds));
     }
 
     public IEnumerator Load(string fileName, bool usePreparedPartAsset)
@@ -250,7 +257,7 @@ public class LdModelLoader : MonoBehaviour
             yield break;
         }
 
-        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, Matrix4x4.identity, usePartAsset))
+        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, usePartAsset, false))
             yield break;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));
@@ -261,7 +268,11 @@ public class LdModelLoader : MonoBehaviour
         partsListCache = new Dictionary<string, string>();
         partsPathCache = new Dictionary<string, Queue<string>>();
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
-        ldFileParser = new LdFileParser();
+
+        bool reduceStud = Camera.main.GetComponent<BrickObjectDictionary>().reduceStud;
+        ldFileParser = new LdFileParser(reduceStud);
         model = null;
+
+        stopWatch = new System.Diagnostics.Stopwatch();
     }
 }
