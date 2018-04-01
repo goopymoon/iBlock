@@ -38,17 +38,11 @@ public class LdFileParser
     private enum eCertified { NA = 0, TRUE, FALSE };
     private enum eWinding { CCW = 0, CW };
 
-    private bool reduceStud;
     private bool isUsingPartsAsset;
     private Dictionary<string, Queue<string>> pathCache;
     private Dictionary<string, FileLines> fileCache;
 
     static System.Diagnostics.Stopwatch stopWatch;
-
-    public LdFileParser(bool optimizeStud = false)
-    {
-        reduceStud = optimizeStud;
-    }
 
     private Vector3 ParseVector(string[] words, ref int offset)
     {
@@ -299,16 +293,12 @@ public class LdFileParser
 
     private bool IsMergeNeeded(string parentName, string fileName)
     {
+        if (!isUsingPartsAsset)
+            return false;
+
         string ext = Path.GetExtension(fileName).ToLower();
         if (ext != ".dat")
             return false;
-
-        if (!isUsingPartsAsset)
-        {
-            ext = Path.GetExtension(parentName).ToLower();
-            if (ext == ".dat")
-                return true;
-        }
 
         Queue<string> filePathQueue;
         if (pathCache.TryGetValue(fileName, out filePathQueue) && filePathQueue.Count > 0)
@@ -320,32 +310,9 @@ public class LdFileParser
         return false;
     }
 
-    private bool IsStudSkippingNeeded(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
-        short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
-    {
-        string modelName = Path.GetFileName(fileName).ToLower();
-
-        StudInfo.eStudType studType;
-        if (BrickMeshManager.Instance.TryGetStudType(modelName, out studType))
-        {
-            parentMesh.AddStudInfo(modelName, trMatrix, accInvertNext, parentColor, studType);
-            return true;
-        }
-
-        return false;
-    }
-
     private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
         short parentColor = LdConstant.LD_COLOR_MAIN, bool accInvertNext = false)
     {
-        if (reduceStud)
-        {
-            if (IsStudSkippingNeeded(ref parentMesh, fileName, trMatrix, parentColor, accInvertNext))
-            {
-                return true;
-            }
-        }
-
         string canonicalName = fileName.Replace(@"\", @"/").ToLower();
 
         BrickMesh subBrickMesh = null;    
@@ -355,24 +322,8 @@ public class LdFileParser
             FileLines val;
             if (!fileCache.TryGetValue(canonicalName, out val))
             {
-                if (!isUsingPartsAsset)
-                {
-                    Debug.Log(string.Format("Cannot find file cache for {0}", canonicalName));
-                    return false;
-                }
-
-                if (parentMesh == null)
-                {
-                    parentMesh = subBrickMesh;
-                }
-                else
-                {
-                    subBrickMesh.SetProperties(trMatrix, accInvertNext, parentColor);
-                    parentMesh.AddChildBrick(subBrickMesh);
-                }
-
-                subBrickMesh.IsPartAsset = true;
-                return true;
+                Debug.Log(string.Format("Cannot find file cache for {0}", canonicalName));
+                return false;
             }
 
             if (!ParseModel(ref subBrickMesh, val.cache.ToArray()))
@@ -400,53 +351,14 @@ public class LdFileParser
         return true;
     }
 
-    public bool PrepareStuds()
-    {
-        foreach(var entry in BrickMeshManager.Instance.studPool)
-        {
-            string canonicalName = entry.Key;
-
-            BrickMesh studBrickMesh = new BrickMesh(canonicalName);
-            if (!BrickMeshManager.Instance.RegisterBrickMesh(canonicalName, studBrickMesh))
-            {
-                Debug.Log(string.Format("Stud already exist: {0}", canonicalName));
-                return false;
-            }
-
-            FileLines val;
-            if (!fileCache.TryGetValue(canonicalName, out val))
-            {
-                Debug.Log(string.Format("Cannot find file cache for {0}", canonicalName));
-                return false;
-            }
-
-            if (!ParseModel(ref studBrickMesh, val.cache.ToArray()))
-                return false;
-
-            studBrickMesh.SetProperties(Matrix4x4.identity, false, LdConstant.LD_COLOR_MAIN);
-        }
-
-        return true;
-    }
-
-    public bool Start(out BrickMesh brickMesh, string modelName,
-        Dictionary<string, Queue<string>> pCache, Dictionary<string, FileLines> fCache,
-        bool usePartsAsset, bool skipStud)
+    public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, Queue<string>> pCache, 
+        Dictionary<string, FileLines> fCache, bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
         pathCache = pCache;
         fileCache = fCache;
 
         brickMesh = null;
-
-        if (reduceStud)
-        {
-            if (!PrepareStuds())
-            {
-                Debug.Log("Preparing sutds failed.");
-                return false;
-            }
-        }
 
         stopWatch = new System.Diagnostics.Stopwatch();
         stopWatch.Start();

@@ -160,21 +160,33 @@ public class LdColorTable : MonoBehaviour
         _invPalette = invPalette;
     }
 
-    public IEnumerator Initialize()
+    public bool Initialize()
     {
-        string filePath = Path.Combine(Application.streamingAssetsPath, LdConstant.LD_CONFIG_FNAME);
+        string folderPath = Path.Combine(Application.dataPath, "LdrawData");
+        string filePath = Path.Combine(folderPath, LdConstant.LD_CONFIG_FNAME);
 
-        AsyncFileLoader afileLoader = new AsyncFileLoader();
-        yield return StartCoroutine(afileLoader.LoadFile(filePath));
+        try
+        {
+            using (StreamReader streamReader = new StreamReader(filePath))
+            {
+                string[] lines = streamReader.ReadToEnd().Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length == 0)
+                {
+                    Debug.Log("Color table is empty.");
+                    return false;
+                }
+                ParseColor(lines);
+            }
 
-        string[] readText;
-        if (!afileLoader.GetSplitLines(out readText))
-            yield break;
+            IsInitialized = true;
+            Debug.Log("Color table is ready.");
 
-        ParseColor(readText);
-
-        IsInitialized = true;
-
-        Debug.Log("Color table is ready.");
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.Log(string.Format("Cannot load Color table: {0}", e.ToString()));
+            return false;
+        }
     }
 }

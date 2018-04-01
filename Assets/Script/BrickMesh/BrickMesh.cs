@@ -6,7 +6,6 @@ using System;
 
 public class BrickMesh
 {
-    public bool IsPartAsset { get; set; }
     public string Name { get; set; }
     public bool BfcEnabled { get; set; }
     public bool InvertNext { get; set; }
@@ -14,7 +13,6 @@ public class BrickMesh
     public Matrix4x4 LocalTr { get; private set; }
     public List<BrickMesh> Children { get; set; }
     public BrickMeshInfo meshInfo { get; private set; }
-    public List<StudInfo> studInfos { get; private set; }
 
     public BrickMesh(string meshName)
     {
@@ -24,8 +22,6 @@ public class BrickMesh
         BrickColor = LdConstant.LD_COLOR_MAIN;
         LocalTr = Matrix4x4.identity;
         meshInfo = BrickMeshManager.Instance.GetBrickMeshInfo(meshName);
-        studInfos = null;
-        IsPartAsset = false;
 
         Children = new List<BrickMesh>();
     }
@@ -38,12 +34,6 @@ public class BrickMesh
         BrickColor = rhs.BrickColor;
         LocalTr = rhs.LocalTr;
         meshInfo = rhs.meshInfo;
-        IsPartAsset = false;
-
-        if (rhs.studInfos != null)
-        {
-            studInfos = new List<StudInfo>(rhs.studInfos);
-        }
 
         Children = new List<BrickMesh>();
         foreach (BrickMesh entry in rhs.Children)
@@ -115,15 +105,6 @@ public class BrickMesh
         return (meshInfo != null ? (meshInfo.Vertices.Count > 0) : false);
     }
 
-    public void AddStudInfo(string name, Matrix4x4 trMatrix, bool inverted, short colorIndex, StudInfo.eStudType studType)
-    {
-        if (studInfos == null)
-        {
-            studInfos = new List<StudInfo>();
-        }
-        studInfos.Add(new StudInfo(name, trMatrix, inverted, colorIndex, studType));
-    }
-
     public bool AddChildBrick(BrickMesh child)
     {
         if (child == null)
@@ -144,32 +125,8 @@ public class BrickMesh
     }
 
 
-    public void MergeChildStudInfos(BrickMesh child)
-    {
-        if (studInfos == null)
-        {
-            studInfos = new List<StudInfo>();
-        }
-
-        foreach (var entry in child.studInfos)
-        {
-            bool inverted = InvertNext ^ entry.Inverted;
-            short colorIndex = LdConstant.GetEffectiveColorIndex(entry.ColorIndex, BrickColor);
-            Matrix4x4 tr = LocalTr * entry.Tr;
-
-            studInfos.Add(new StudInfo(entry.Name, tr, inverted, colorIndex, entry.studType));
-        }
-
-        child.studInfos.Clear();
-    }
-
     public void MergeChildBrick(BrickMesh child)
     {
-        if (child.studInfos != null)
-        {
-            MergeChildStudInfos(child);
-        }
-
         if (meshInfo != null && child.meshInfo != null)
         {
             if (child.meshInfo.Vertices.Count != 0 || child.Children.Count != 0)

@@ -53,7 +53,6 @@ public class AsyncFileLoader {
         }
 
         readString = Regex.Replace(readString, @"\r\n?|\n", Environment.NewLine);
-
         //Debug.Log(string.Format("{0}: loaded file length {1}", filePath, readString.Length));
     }
 }

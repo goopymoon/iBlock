@@ -4,8 +4,6 @@ using UnityEngine;
 
 public class BrickMeshManager : MonoBehaviour
 {
-    public Dictionary<string, StudInfo.eStudType> studPool;
-
     private Dictionary<string, BrickMeshInfo> infoPool;
     private Dictionary<string, BrickMesh> brickPool;
 
@@ -105,28 +103,9 @@ public class BrickMeshManager : MonoBehaviour
         //}
     }
 
-    public bool TryGetStudType(string name, out StudInfo.eStudType studType)
-    {
-        studType = StudInfo.eStudType.ST_NA;
-
-        return studPool.TryGetValue(name, out studType);
-    }
-
     public void Initialize()
     {
         infoPool = new Dictionary<string, BrickMeshInfo>();
         brickPool = new Dictionary<string, BrickMesh>();
-
-        // stud list
-        studPool = new Dictionary<string, StudInfo.eStudType>();
-        // convex stud
-        studPool.Add("stud.dat", StudInfo.eStudType.ST_CONVEX);
-        studPool.Add("stud3.dat", StudInfo.eStudType.ST_CONVEX);
-        studPool.Add("stud3a.dat", StudInfo.eStudType.ST_CONVEX);
-        // concave stud
-        studPool.Add("stud2.dat", StudInfo.eStudType.ST_CONCAVE);
-        studPool.Add("stud2a.dat", StudInfo.eStudType.ST_CONCAVE);
-        studPool.Add("stud4.dat", StudInfo.eStudType.ST_CONCAVE);
-        studPool.Add("stud4a.dat", StudInfo.eStudType.ST_CONCAVE);
     }
 }
