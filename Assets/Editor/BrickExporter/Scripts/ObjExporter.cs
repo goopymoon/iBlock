@@ -93,9 +93,8 @@ public class ObjExporter : ScriptableObject
 
         ;
         string openDir = Path.Combine(Application.dataPath, "Models");
-        string meshName = Selection.gameObjects[0].name;
+        string meshName = Path.GetFileNameWithoutExtension(Selection.gameObjects[0].name);
         string fileName = EditorUtility.SaveFilePanel("Export .obj file", openDir, meshName, "obj");
-
         ObjExporterScript.Start();
 
         StringBuilder meshString = new StringBuilder();

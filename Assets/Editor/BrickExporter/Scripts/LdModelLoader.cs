@@ -12,7 +12,11 @@ using System.Linq;
 
 public class LdModelLoader : ScriptableObject
 {
+    // parts list contains only recommended parts
+    private Dictionary<string, string> partsListCache;
+    // parts path contains paths of all parts
     private Dictionary<string, Queue<string>> partsPathCache;
+
     private Dictionary<string, LdFileParser.FileLines> fileCache;
     private LdFileParser ldFileParser;
     private HashSet<string> subFileNames;
@@ -22,6 +26,30 @@ public class LdModelLoader : ScriptableObject
     private string GetBasePartImportPath()
     {
         return Path.Combine(Path.Combine(Application.dataPath, "LdrawData"), LdConstant.LD_PARTS_PATH);
+    }
+
+    public bool LoadPartsListFile()
+    {
+        var filePath = Path.Combine(GetBasePartImportPath(), LdConstant.PARTS_LIST_FNAME);
+
+        FileLoader fileLoader = new FileLoader();
+        if (!fileLoader.LoadFile(filePath))
+            return false;
+
+        string[] readText;
+        if (!fileLoader.GetSplitLines(out readText))
+            return false;
+
+        for (int i = 0; i<readText.Length; ++i)
+        {
+            string[] words = readText[i].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length > 0)
+                partsListCache.Add(words[0], "");
+        }
+
+        Debug.Log(string.Format("Parts list cache is ready: {0}", filePath));
+
+        return true;
     }
 
     private bool LoadPartsPathFile()
@@ -224,7 +252,7 @@ public class LdModelLoader : ScriptableObject
         }
 
         BrickMesh model = null;
-        if (!ldFileParser.Start(out model, mainModelName, partsPathCache, fileCache, usePartAsset))
+        if (!ldFileParser.Start(out model, mainModelName, partsListCache, fileCache, usePartAsset))
             return null;
 
         Debug.Log(string.Format("Parsing model finished: {0}", mainModelName));
@@ -234,12 +262,16 @@ public class LdModelLoader : ScriptableObject
     public bool Initialize()
     {
         // cache
+        partsListCache = new Dictionary<string, string>();
         partsPathCache = new Dictionary<string, Queue<string>>();
         fileCache = new Dictionary<string, LdFileParser.FileLines>();
         // parser
         ldFileParser = new LdFileParser();
         // stop watch
         stopWatch = new System.Diagnostics.Stopwatch();
+
+        if (!LoadPartsListFile())
+            return false;
 
         return LoadPartsPathFile();
     }

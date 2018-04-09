@@ -105,7 +105,8 @@ public class LdPartsLoader
                 return false;
         }
 
-        return ldFileParser.Start(out brickMesh, fileName, canonicalPathCache, fileCache, true);
+        Dictionary<string, string> partsListCache = new Dictionary<string, string>();
+        return ldFileParser.Start(out brickMesh, fileName, partsListCache, fileCache, true);
     }
 
     public void Initialize()

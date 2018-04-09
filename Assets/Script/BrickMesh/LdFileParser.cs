@@ -39,7 +39,7 @@ public class LdFileParser
     private enum eWinding { CCW = 0, CW };
 
     private bool isUsingPartsAsset;
-    private Dictionary<string, Queue<string>> pathCache;
+    private Dictionary<string, string> partListCache;
     private Dictionary<string, FileLines> fileCache;
 
     static System.Diagnostics.Stopwatch stopWatch;
@@ -291,23 +291,13 @@ public class LdFileParser
         return true;
     }
 
-    private bool IsMergeNeeded(string parentName, string fileName)
+    private bool IsMergeNeeded(BrickMesh parentMesh, string fileName)
     {
         if (!isUsingPartsAsset)
             return false;
 
         string ext = Path.GetExtension(fileName).ToLower();
-        if (ext != ".dat")
-            return false;
-
-        Queue<string> filePathQueue;
-        if (pathCache.TryGetValue(fileName, out filePathQueue) && filePathQueue.Count > 0)
-        {
-            string dirName = Path.GetDirectoryName(filePathQueue.Peek());
-            return (dirName != "parts");
-        }
-
-        return false;
+        return (ext == ".dat" && !partListCache.ContainsKey(fileName));
     }
 
     private bool TryParseModel(ref BrickMesh parentMesh, string fileName, Matrix4x4 trMatrix,
@@ -338,7 +328,7 @@ public class LdFileParser
         {
             subBrickMesh.SetProperties(trMatrix, accInvertNext, parentColor);
 
-            if (IsMergeNeeded(parentMesh.Name, canonicalName))
+            if (IsMergeNeeded(parentMesh, canonicalName))
             {
                 parentMesh.MergeChildBrick(subBrickMesh);
             }
@@ -351,11 +341,11 @@ public class LdFileParser
         return true;
     }
 
-    public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, Queue<string>> pCache, 
+    public bool Start(out BrickMesh brickMesh, string modelName, Dictionary<string, string> partList, 
         Dictionary<string, FileLines> fCache, bool usePartsAsset)
     {
         isUsingPartsAsset = usePartsAsset;
-        pathCache = pCache;
+        partListCache = partList;
         fileCache = fCache;
 
         brickMesh = null;

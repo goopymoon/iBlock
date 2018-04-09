@@ -12,6 +12,9 @@ public class BrickGeneratorScript : EditorWindow
 {
     static System.Diagnostics.Stopwatch stopWatch;
 
+    PartsExporterScript export;
+    bool needExport;
+
     private GameObject CreateBrickPrefab(BrickMesh brickMesh, Vector3 scale)
     {
         UnityEngine.Object prefab = AssetDatabase.LoadAssetAtPath("Assets/Prefabs/Brick.prefab", typeof(GameObject));
@@ -36,14 +39,19 @@ public class BrickGeneratorScript : EditorWindow
         UnityEngine.Object prefab = AssetDatabase.LoadAssetAtPath("Assets/Prefabs/Brick.prefab", typeof(GameObject));
         GameObject go = Instantiate(prefab, Vector3.zero, Quaternion.identity) as GameObject;
 
-        go.GetComponent<Brick>().CreateMesh(brickMesh, invertNext, parentBrickColor);
+        bool isMeshExist = go.GetComponent<Brick>().CreateMesh(brickMesh, invertNext, parentBrickColor);
 
         go.name = brickMesh.Name;
         go.GetComponent<Brick>().SetParent(parent);
 
+        if (needExport && isMeshExist && brickMesh.Children.Count == 0)
+        {
+            if (!export.DoesAssetExist(go.name))
+                export.SaveAsset(go.name, go);
+        }
+
         bool accInvert = invertNext ^ brickMesh.InvertNext;
         short accuColor = LdConstant.GetEffectiveColorIndex(brickMesh.BrickColor, parentBrickColor);
-
         for (int i = 0; i < brickMesh.Children.Count; ++i)
         {
             CreateChild(brickMesh.Children[i], go.transform, accInvert, accuColor);
@@ -98,8 +106,13 @@ public class BrickGeneratorScript : EditorWindow
         return false;
     }
 
-    public void Initialize()
+    public void Initialize(bool exportFlag)
     {
+        needExport = exportFlag;
+
+        export = ScriptableObject.CreateInstance<PartsExporterScript>();
+        export.Initialize();
+
         stopWatch = new System.Diagnostics.Stopwatch();
     }
 }
@@ -115,7 +128,7 @@ public class BrickGenerator : ScriptableObject
         BrickGenerator.scale = new Vector3(0.1f, 0.1f, 0.1f);
     }
 
-    static void DoImport()
+    static void DoImport(bool exportFlag)
     {
         if (!IsInitialized)
         {
@@ -129,15 +142,21 @@ public class BrickGenerator : ScriptableObject
         }
 
         BrickGeneratorScript import = ScriptableObject.CreateInstance<BrickGeneratorScript>();
-        import.Initialize();
+        import.Initialize(exportFlag);
 
         import.LoadModel(scale);
     }
 
     [MenuItem("Ldraw/Import model")]
-    static void DoExportSingle()
+    static void DoImport()
     {
-        DoImport();
+        DoImport(false);
+    }
+
+    [MenuItem("Ldraw/Import model (export)")]
+    static void DoImportExport()
+    {
+        DoImport(true);
     }
 }
 

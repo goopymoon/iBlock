@@ -103,7 +103,7 @@ public class PartsExporterScript : ScriptableObject
         partNames = new Queue<string>(System.IO.File.ReadAllLines(filePath));
     }
 
-    bool DoesAssetExist(string fname)
+    public bool DoesAssetExist(string fname)
     {
         string meshName = Path.ChangeExtension(fname, ".asset");
         string prefabName = Path.ChangeExtension(fname, ".prefab");
@@ -117,7 +117,7 @@ public class PartsExporterScript : ScriptableObject
         return false;
     }
 
-    bool SaveAsset(string fname, GameObject go)
+    public bool SaveAsset(string fname, GameObject go)
     {
         string meshName = Path.ChangeExtension(go.name, ".asset");
         string prefabName = Path.ChangeExtension(go.name, ".prefab");
